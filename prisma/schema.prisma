@@ -86,6 +86,7 @@ model User {
 model RefreshToken {
   id           String    @id @default(cuid())
   userId       String
+  sessionId    String // = the access JWT's `sid` claim; stable across rotation, the reuse-detection family key
   tokenHash    String    @unique
   expiresAt    DateTime
   revokedAt    DateTime?
@@ -97,6 +98,7 @@ model RefreshToken {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, revokedAt])
+  @@index([sessionId])
 }
 
 model Incident {

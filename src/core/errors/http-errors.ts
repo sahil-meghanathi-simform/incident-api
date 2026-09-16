@@ -61,6 +61,16 @@ export class RateLimitedError extends AppError {
   }
 }
 
+export class EmailAlreadyExistsError extends AppError {
+  constructor() {
+    super({
+      code: 'EMAIL_ALREADY_EXISTS',
+      status: 409,
+      message: 'An account with this email already exists.',
+    });
+  }
+}
+
 export class InternalError extends AppError {
   constructor(message = 'An unexpected error occurred.') {
     super({ code: 'INTERNAL', status: 500, message });

@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { prisma } from '../db/prisma';
 import { asyncHandler } from '../core/asyncHandler';
+import { authRouter } from '../modules/auth/auth.router';
+import { usersRouter } from '../modules/users/users.router';
 
 const CONTRACT_VERSION = '0.1.0';
 
@@ -25,8 +27,10 @@ apiRouter.get(
   }),
 );
 
-// Module routers are mounted here as each module is built:
-//   apiRouter.use('/auth', authRouter);
+apiRouter.use('/auth', authRouter);
+apiRouter.use('/users', usersRouter);
+
+// Further module routers are mounted here as each module is built:
 //   apiRouter.use('/incidents', incidentRouter);
 //   ...
 // Each module's router.ts applies authenticate/authorizeRole/validate itself, per the
