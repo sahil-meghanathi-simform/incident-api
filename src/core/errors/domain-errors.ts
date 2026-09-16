@@ -1,0 +1,110 @@
+import { AppError } from './AppError';
+
+/**
+ * Thrown by getByIdForActor's authorization decision (§2.3). Carries no incident data —
+ * the 403 body is a fixed envelope regardless of what the query almost matched.
+ */
+export class InsufficientClearanceError extends AppError {
+  constructor(incidentId: string) {
+    super({
+      code: 'INSUFFICIENT_CLEARANCE',
+      status: 403,
+      message: 'You do not have sufficient clearance to view this incident.',
+      meta: { incidentId },
+    });
+  }
+}
+
+export class NotAssignedInvestigatorError extends AppError {
+  constructor(incidentId: string) {
+    super({
+      code: 'NOT_ASSIGNED_INVESTIGATOR',
+      status: 403,
+      message: 'You are not the assigned investigator for this incident.',
+      meta: { incidentId },
+    });
+  }
+}
+
+export class InvalidStageTransitionError extends AppError {
+  constructor(from: string, to: string, reason?: string) {
+    super({
+      code: 'INVALID_STAGE_TRANSITION',
+      status: 409,
+      message: `Cannot move an incident from ${from} to ${to}.`,
+      meta: { from, to, reason },
+    });
+  }
+}
+
+export class ClosureRequirementsMissingError extends AppError {
+  constructor() {
+    super({
+      code: 'CLOSURE_REQUIREMENTS_MISSING',
+      status: 409,
+      message: 'A root cause and corrective action are required before closure can be approved.',
+    });
+  }
+}
+
+export class InvestigatorClearanceTooLowError extends AppError {
+  constructor(required: number, actual: number) {
+    super({
+      code: 'INVESTIGATOR_CLEARANCE_TOO_LOW',
+      status: 409,
+      message: 'The selected investigator does not have sufficient clearance for this severity.',
+      meta: { required, actual },
+    });
+  }
+}
+
+export class StaleVersionError extends AppError {
+  constructor(expected: number) {
+    super({
+      code: 'STALE_VERSION',
+      status: 409,
+      message: 'This incident changed while you were editing it. Please refresh and try again.',
+      meta: { expected },
+    });
+  }
+}
+
+export class AlreadyAcknowledgedError extends AppError {
+  constructor() {
+    super({
+      code: 'ALREADY_ACKNOWLEDGED',
+      status: 409,
+      message: 'This incident has already been acknowledged in the current escalation cycle.',
+    });
+  }
+}
+
+export class CursorSortMismatchError extends AppError {
+  constructor() {
+    super({
+      code: 'CURSOR_SORT_MISMATCH',
+      status: 422,
+      message: 'The pagination cursor does not match the requested sort order.',
+    });
+  }
+}
+
+export class SelfModificationForbiddenError extends AppError {
+  constructor() {
+    super({
+      code: 'SELF_MODIFICATION_FORBIDDEN',
+      status: 409,
+      message: 'You cannot change your own role or clearance level.',
+    });
+  }
+}
+
+export class LastAdminError extends AppError {
+  constructor() {
+    super({
+      code: 'LAST_ADMIN',
+      status: 409,
+      message: 'The last active administrator cannot be demoted or deactivated.',
+    });
+  }
+}
