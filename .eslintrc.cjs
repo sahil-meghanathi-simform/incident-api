@@ -45,5 +45,12 @@ module.exports = {
       files: ['src/http/middleware/validate.middleware.ts'],
       rules: { 'no-restricted-syntax': 'off' },
     },
+    // Both layering rules are an application-layer (src/) concern — scripts/check-layers.sh
+    // only ever greps src/, and seed/test code legitimately needs direct, unscoped DB
+    // access (bulk-loading fixture data, asserting DB state behind the app layer).
+    {
+      files: ['prisma/seed/**/*.ts', 'tests/**/*.ts'],
+      rules: { 'no-restricted-syntax': 'off' },
+    },
   ],
 };
