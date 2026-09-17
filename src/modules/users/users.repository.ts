@@ -12,3 +12,19 @@ export async function findAssignableInvestigators(
     select: { id: true, displayName: true, clearanceLevel: true },
   });
 }
+
+export interface InvestigatorRow {
+  id: string;
+  displayName: string;
+  role: 'REPORTER' | 'TRIAGE_MANAGER' | 'INVESTIGATOR' | 'ADMIN';
+  clearanceLevel: number;
+  isActive: boolean;
+}
+
+/** Used by triage.service.ts::assignInvestigator to validate an assignment target. */
+export function findInvestigatorById(id: string): Promise<InvestigatorRow | null> {
+  return prisma.user.findUnique({
+    where: { id },
+    select: { id: true, displayName: true, role: true, clearanceLevel: true, isActive: true },
+  });
+}

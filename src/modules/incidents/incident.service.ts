@@ -26,8 +26,10 @@ import {
   existsById,
   findByIdScoped,
   findMinePage,
+  findTriageRowScoped,
   nextReferenceSequence,
   type IncidentListFilters,
+  type TriageIncidentRow,
 } from './incident.repository';
 
 const TYPE_LABEL: Record<(typeof IncidentTypeValues)[number], string> = {
@@ -133,14 +135,21 @@ export async function list(actor: Actor, query: ListIncidentsQuery): Promise<Inc
 }
 
 /**
- * §2.3's by-ID form. Query 1 (findByIdScoped) makes the entire authorization
- * decision; a hit here returns the incident and nothing else runs. A miss means
- * either the incident doesn't exist or the actor's clearance doesn't cover it — query
- * 2 (existsById, id-only) exists solely to choose which, and cannot grant access.
+ * §2.3's by-ID form, generalised over which row shape the caller needs. Query 1 (the
+ * `finder`) makes the ENTIRE authorization decision; a hit returns the row and nothing
+ * else runs. A miss means either the incident doesn't exist or the actor's clearance
+ * doesn't cover it — query 2 (existsById, id-only) exists solely to choose which, and
+ * cannot itself grant access. Module 4's triage.service.ts reuses this exact function
+ * (build-plan.md: "changeSeverity loads through getByIdForActor") so a triager cannot
+ * act on an incident they cannot see, without duplicating the denial/404 logic here.
  */
-export async function getById(actor: Actor, id: string): Promise<IncidentDetail> {
-  const incident = await findByIdScoped(id, actor);
-  if (incident) return toIncidentDetail(incident, actor);
+async function loadForActorOrThrow<T>(
+  id: string,
+  actor: Actor,
+  finder: (id: string, actor: Actor) => Promise<T | null>,
+): Promise<T> {
+  const row = await finder(id, actor);
+  if (row) return row;
 
   const exists = await existsById(id);
   if (exists) {
@@ -153,6 +162,15 @@ export async function getById(actor: Actor, id: string): Promise<IncidentDetail>
     throw new InsufficientClearanceError(id);
   }
   throw new NotFoundError('Incident', id);
+}
+
+export function getById(actor: Actor, id: string): Promise<IncidentDetail> {
+  return loadForActorOrThrow(id, actor, findByIdScoped).then((incident) => toIncidentDetail(incident, actor));
+}
+
+/** The raw, triage-oriented row (assignee clearance included) behind every Module 4 mutation. */
+export function getByIdForActor(actor: Actor, id: string): Promise<TriageIncidentRow> {
+  return loadForActorOrThrow(id, actor, findTriageRowScoped);
 }
 
 /** Incidents the actor reported that they may STILL see (Q9) — not every report they filed. */

@@ -49,6 +49,28 @@ by Admin (Module 10). `GET /escalations/tiers` is intentionally open to any
 authenticated user (the frontend's SLA countdown tooltips need it) even though writing
 tiers is Admin-only — a deliberate disclosure, not an oversight.
 
+## Lowering severity WITHIN the band (Module 4, build-plan.md finding S1)
+
+The reference plan's §9.1 enumerates three cases for a severity change — entering the
+band, moving up within it, leaving it — and never states what happens when a triage
+manager lowers CRITICAL to HIGH (permitted; a triager can revise severity in either
+direction). Both "obvious" completions of the missing case are defects: nulling
+`highSeveritySince` while still HIGH violates the `high_severity_clock` CHECK (a 500 on
+a routine triage action); leaving `currentEscalationLevel` at the CRITICAL cycle's value
+means the HIGH tier set can never fire, since `tiersDueFor` only returns tiers whose
+`level > currentEscalationLevel`.
+
+**Decision:** lowering within the band changes nothing about the clock. `highSeveritySince`
+(Q19's origin), `escalationCycle`, `currentEscalationLevel` and any acknowledgement are
+all preserved exactly as they were. The incident keeps being judged against the tier
+thresholds it was already being judged against — a triager softening CRITICAL to HIGH
+does not buy it a fresh grace period, nor does it re-notify anyone about a tier already
+raised. This is implemented as a single total function over band membership,
+`triage.service.ts::applySeverityChange`, so the four cases (enter, raise-within, lower-
+within, leave) are exhaustive by construction rather than three cases plus an implicit
+fallthrough. See `tests/unit/applySeverityChange.spec.ts` and the 48-case sweep in
+`tests/scenarios/severity-change-sweep.spec.ts`.
+
 ## Notifications respect clearance too
 
 Recipients for an escalation are triage managers/admins whose clearance is sufficient

@@ -1,13 +1,16 @@
 import { Router } from 'express';
 import { asyncHandler } from '../../core/asyncHandler';
 import { authenticate } from '../../http/middleware/authenticate.middleware';
+import { authorizeRole } from '../../http/middleware/authorizeRole.middleware';
 import { validate } from '../../http/middleware/validate.middleware';
+import { ifMatch } from '../../http/middleware/ifMatch.middleware';
 import {
   CreateIncidentRequestSchema,
   IncidentIdParamsSchema,
   ListIncidentsQuerySchema,
   MineQuerySchema,
 } from '../../contracts/incident.contract';
+import { AssignInvestigatorRequestSchema, ChangeSeverityRequestSchema } from '../../contracts/triage.contract';
 import {
   createHandler,
   getByIdHandler,
@@ -16,6 +19,13 @@ import {
   summaryHandler,
   typesHandler,
 } from './incident.controller';
+import {
+  acknowledgeHandler,
+  assignInvestigatorHandler,
+  changeSeverityHandler,
+  triageHandler,
+  unassignInvestigatorHandler,
+} from '../triage/triage.controller';
 
 export const incidentRouter = Router();
 
@@ -36,4 +46,56 @@ incidentRouter.get(
   authenticate,
   validate({ params: IncidentIdParamsSchema }),
   asyncHandler(getByIdHandler),
+);
+
+// ---------------------------------------------------------------------------
+// Module 4 — Triage, Severity & Assignment. All mutations require If-Match (§2.8);
+// ifMatch runs after validate() per app.ts's documented middleware order.
+// ---------------------------------------------------------------------------
+
+const TRIAGE_ROLES = ['TRIAGE_MANAGER', 'ADMIN'] as const;
+
+incidentRouter.post(
+  '/:id/triage',
+  authenticate,
+  authorizeRole(...TRIAGE_ROLES),
+  validate({ params: IncidentIdParamsSchema }),
+  ifMatch,
+  asyncHandler(triageHandler),
+);
+
+incidentRouter.patch(
+  '/:id/severity',
+  authenticate,
+  authorizeRole(...TRIAGE_ROLES),
+  validate({ params: IncidentIdParamsSchema, body: ChangeSeverityRequestSchema }),
+  ifMatch,
+  asyncHandler(changeSeverityHandler),
+);
+
+incidentRouter.post(
+  '/:id/assignment',
+  authenticate,
+  authorizeRole(...TRIAGE_ROLES),
+  validate({ params: IncidentIdParamsSchema, body: AssignInvestigatorRequestSchema }),
+  ifMatch,
+  asyncHandler(assignInvestigatorHandler),
+);
+
+incidentRouter.delete(
+  '/:id/assignment',
+  authenticate,
+  authorizeRole(...TRIAGE_ROLES),
+  validate({ params: IncidentIdParamsSchema }),
+  ifMatch,
+  asyncHandler(unassignInvestigatorHandler),
+);
+
+incidentRouter.post(
+  '/:id/acknowledge',
+  authenticate,
+  authorizeRole(...TRIAGE_ROLES),
+  validate({ params: IncidentIdParamsSchema }),
+  ifMatch,
+  asyncHandler(acknowledgeHandler),
 );

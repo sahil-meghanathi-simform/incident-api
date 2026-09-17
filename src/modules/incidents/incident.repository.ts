@@ -184,3 +184,99 @@ export async function countByStage(actor: Actor): Promise<{ stage: Stage; count:
   });
   return rows.map((r) => ({ stage: r.stage, count: r._count._all }));
 }
+
+// ---------------------------------------------------------------------------
+// Module 4 — Triage, Severity & Assignment
+// ---------------------------------------------------------------------------
+
+// The one row shape every triage.service mutation reads through — includes the
+// assignee's clearanceLevel (unlike INCIDENT_DETAIL_INCLUDE's UserRef-only select),
+// which is what the Q17 cascade check (mustUnassignOnRaise) needs without a second
+// round trip.
+export const TRIAGE_ROW_INCLUDE = {
+  assignee: { select: { id: true, displayName: true, clearanceLevel: true } },
+} satisfies Prisma.IncidentInclude;
+
+export type TriageIncidentRow = Prisma.IncidentGetPayload<{ include: typeof TRIAGE_ROW_INCLUDE }>;
+
+/**
+ * The same two-query-form authorization decision as findByIdScoped (§2.3), reused by
+ * every Module 4 mutation via incident.service.ts::getByIdForActor so a triager cannot
+ * act on an incident they cannot see.
+ */
+export function findTriageRowScoped(id: string, actor: Actor): Promise<TriageIncidentRow | null> {
+  return prisma.incident.findFirst({
+    where: { id, ...visibilityScope(actor) },
+    include: TRIAGE_ROW_INCLUDE,
+  });
+}
+
+export interface UpdateIncidentStateInput {
+  stage?: Stage;
+  severity?: Severity;
+  assignedInvestigatorId?: string | null;
+  acknowledgedAt?: Date | null;
+  acknowledgedById?: string | null;
+  highSeveritySince?: Date | null;
+  escalationCycle?: number;
+  currentEscalationLevel?: number;
+}
+
+/**
+ * The ONLY mutating write path for Incident rows outside creation (§2.8). `updateMany`'s
+ * where pins both `id` and `version` — a stale version matches zero rows rather than
+ * throwing, so the caller (inside its own transaction, having already computed `data`
+ * from a pre-write read) checks the returned count and throws StaleVersionError itself.
+ * This is genuinely race-free at READ COMMITTED (build-plan.md finding S8): two
+ * concurrent callers race to matcher the current version, and only one update matches.
+ */
+export async function updateVersioned(
+  tx: TxClient,
+  id: string,
+  expectedVersion: number,
+  data: UpdateIncidentStateInput,
+): Promise<number> {
+  const result = await tx.incident.updateMany({
+    where: { id, version: expectedVersion },
+    data: { ...data, version: { increment: 1 } },
+  });
+  return result.count;
+}
+
+/**
+ * §9.1: unacknowledged + REPORTED/TRIAGE, scoped by clearance. The OR lives inside its
+ * own AND entry (same discipline as buildWhere's `q` filter) so a future caller-supplied
+ * filter on this endpoint can never collide with it (build-plan.md finding S4).
+ */
+function triageQueueWhere(actor: Actor): Prisma.IncidentWhereInput {
+  return {
+    AND: [
+      visibilityScope(actor),
+      {
+        OR: [
+          { stage: { in: ['REPORTED', 'TRIAGE'] } },
+          { AND: [{ highSeveritySince: { not: null } }, { acknowledgedAt: null }, { stage: { not: 'CLOSED' } }] },
+        ],
+      },
+    ],
+  };
+}
+
+export async function findTriageQueuePage(
+  actor: Actor,
+  page: number,
+  pageSize: number,
+): Promise<{ items: IncidentListRow[]; totalItems: number }> {
+  const where = triageQueueWhere(actor);
+  const [totalItems, items] = await prisma.$transaction([
+    prisma.incident.count({ where }),
+    prisma.incident.findMany({
+      where,
+      include: INCIDENT_LIST_INCLUDE,
+      orderBy: [{ currentEscalationLevel: 'desc' }, { createdAt: 'asc' }],
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+  ]);
+  return { items, totalItems };
+}

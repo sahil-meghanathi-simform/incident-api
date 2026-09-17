@@ -108,3 +108,43 @@ export class LastAdminError extends AppError {
     });
   }
 }
+
+export class SeverityUnchangedError extends AppError {
+  constructor() {
+    super({
+      code: 'SEVERITY_UNCHANGED',
+      status: 409,
+      message: 'The requested severity is the same as the current severity.',
+    });
+  }
+}
+
+export class InvalidAssignmentTargetError extends AppError {
+  constructor() {
+    super({
+      code: 'INVALID_ASSIGNMENT_TARGET',
+      status: 409,
+      message: 'The selected user is not an active investigator.',
+    });
+  }
+}
+
+export class NoInvestigatorAssignedError extends AppError {
+  constructor() {
+    super({
+      code: 'NO_INVESTIGATOR_ASSIGNED',
+      status: 409,
+      message: 'This incident has no assigned investigator to remove.',
+    });
+  }
+}
+
+export class IncidentClosedError extends AppError {
+  constructor() {
+    super({
+      code: 'INCIDENT_CLOSED',
+      status: 409,
+      message: 'This incident is closed and cannot be modified.',
+    });
+  }
+}

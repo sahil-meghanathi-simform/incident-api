@@ -16,6 +16,10 @@ export type ErrorCode =
   | 'LAST_ADMIN'
   | 'EMAIL_ALREADY_EXISTS'
   | 'RATE_LIMITED'
+  | 'SEVERITY_UNCHANGED'
+  | 'INVALID_ASSIGNMENT_TARGET'
+  | 'NO_INVESTIGATOR_ASSIGNED'
+  | 'INCIDENT_CLOSED'
   | 'INTERNAL';
 
 export interface ErrorDetail {
