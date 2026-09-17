@@ -280,3 +280,29 @@ export async function findTriageQueuePage(
   ]);
   return { items, totalItems };
 }
+
+// ---------------------------------------------------------------------------
+// Module 5 — Investigation & Notes. `prisma.incident` may only be queried from this
+// file (build-plan.md B1's ESLint rule) — investigation.repository.ts, which owns the
+// InvestigationNote table, imports this function rather than querying Incident itself.
+// ---------------------------------------------------------------------------
+
+/** `GET /investigations/mine` (§10.1): visibilityScope + assigned to this actor. */
+export async function findMyInvestigationsPage(
+  actor: Actor,
+  page: number,
+  pageSize: number,
+): Promise<{ items: IncidentListRow[]; totalItems: number }> {
+  const where: Prisma.IncidentWhereInput = { AND: [visibilityScope(actor), { assignedInvestigatorId: actor.id }] };
+  const [totalItems, items] = await prisma.$transaction([
+    prisma.incident.count({ where }),
+    prisma.incident.findMany({
+      where,
+      include: INCIDENT_LIST_INCLUDE,
+      orderBy: { createdAt: 'desc' },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+  ]);
+  return { items, totalItems };
+}

@@ -5,6 +5,7 @@ import { authRouter } from '../modules/auth/auth.router';
 import { usersRouter } from '../modules/users/users.router';
 import { incidentRouter } from '../modules/incidents/incident.router';
 import { triageRouter } from '../modules/triage/triage.router';
+import { investigationRouter } from '../modules/investigation/investigation.router';
 
 const CONTRACT_VERSION = '0.1.0';
 
@@ -33,6 +34,7 @@ apiRouter.use('/auth', authRouter);
 apiRouter.use('/users', usersRouter);
 apiRouter.use('/incidents', incidentRouter);
 apiRouter.use('/triage', triageRouter);
+apiRouter.use('/investigations', investigationRouter);
 
 // Further module routers are mounted here as each module is built. Each module's
 // router.ts applies authenticate/authorizeRole/validate itself, per the layering rule

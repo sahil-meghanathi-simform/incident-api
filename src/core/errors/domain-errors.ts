@@ -148,3 +148,20 @@ export class IncidentClosedError extends AppError {
     });
   }
 }
+
+/**
+ * Module 5 §10.1: notes may only be added while the incident is under active
+ * investigation. Reuses the INVALID_STAGE_TRANSITION code (there is no real
+ * from/to transition here, just a stage gate) tagged with `meta.reason` so the
+ * frontend can distinguish it from an actual stage-map violation.
+ */
+export class NotesClosedError extends AppError {
+  constructor(stage: string) {
+    super({
+      code: 'INVALID_STAGE_TRANSITION',
+      status: 409,
+      message: 'Notes can only be added while an incident is under investigation.',
+      meta: { stage, reason: 'NOTES_CLOSED' },
+    });
+  }
+}

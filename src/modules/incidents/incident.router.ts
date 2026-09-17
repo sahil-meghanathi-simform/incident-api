@@ -11,6 +11,7 @@ import {
   MineQuerySchema,
 } from '../../contracts/incident.contract';
 import { AssignInvestigatorRequestSchema, ChangeSeverityRequestSchema } from '../../contracts/triage.contract';
+import { AddNoteRequestSchema, NotesCursorQuerySchema } from '../../contracts/investigation.contract';
 import {
   createHandler,
   getByIdHandler,
@@ -26,6 +27,7 @@ import {
   triageHandler,
   unassignInvestigatorHandler,
 } from '../triage/triage.controller';
+import { addNoteHandler, listNotesHandler } from '../investigation/investigation.controller';
 
 export const incidentRouter = Router();
 
@@ -98,4 +100,27 @@ incidentRouter.post(
   validate({ params: IncidentIdParamsSchema }),
   ifMatch,
   asyncHandler(acknowledgeHandler),
+);
+
+// ---------------------------------------------------------------------------
+// Module 5 — Investigation & Notes. No authorizeRole gate here: the two-gate rule
+// (clearance + assignment-or-Admin) is a per-incident, per-actor decision, not a
+// static role list, so it is enforced entirely by investigation.service.ts — a
+// REPORTER who CAN see the incident must still get 403 NOT_ASSIGNED_INVESTIGATOR,
+// not 403 INSUFFICIENT_ROLE (§10.1 tests). Not If-Match-gated: notes are append-only
+// and never touch the incident's own `version`.
+// ---------------------------------------------------------------------------
+
+incidentRouter.get(
+  '/:id/notes',
+  authenticate,
+  validate({ params: IncidentIdParamsSchema, query: NotesCursorQuerySchema }),
+  asyncHandler(listNotesHandler),
+);
+
+incidentRouter.post(
+  '/:id/notes',
+  authenticate,
+  validate({ params: IncidentIdParamsSchema, body: AddNoteRequestSchema }),
+  asyncHandler(addNoteHandler),
 );

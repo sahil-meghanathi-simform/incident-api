@@ -1,6 +1,6 @@
 import { HIGH_BAND_RANK, SEVERITY_RANK } from '../../config/constants';
 import { canTransition } from '../../policy/stage.policy';
-import { canWriteNotes } from '../../policy/note.policy';
+import { canReadNotes, canWriteNotes } from '../../policy/note.policy';
 import { hasClosureRequirements } from '../../policy/closure.policy';
 import type { Actor } from '../../types/actor.type';
 import type { IncidentActions, IncidentDetail, IncidentListItem } from '../../contracts/incident.contract';
@@ -29,6 +29,7 @@ function computeActions(actor: Actor, incident: IncidentDetailRow): IncidentActi
       SEVERITY_RANK[incident.severity] >= HIGH_BAND_RANK &&
       incident.acknowledgedAt === null &&
       incident.stage !== 'CLOSED',
+    canReadNotes: canReadNotes(actor, incident),
     canAddNote: canWriteNotes(actor, incident),
     canProposeClosure: isAssigneeOrAdmin(actor, incident) && canTransition(incident.stage, 'PENDING_CLOSURE'),
     canApproveClosure: canManage(actor) && incident.stage === 'PENDING_CLOSURE' && hasClosureRequirements(incident),

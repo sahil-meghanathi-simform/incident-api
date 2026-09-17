@@ -100,6 +100,7 @@ export const IncidentActionsSchema = z.object({
   canTriage: z.boolean(),
   canAssign: z.boolean(),
   canAcknowledge: z.boolean(),
+  canReadNotes: z.boolean(),
   canAddNote: z.boolean(),
   canProposeClosure: z.boolean(),
   canApproveClosure: z.boolean(),
