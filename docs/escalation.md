@@ -77,3 +77,42 @@ Recipients for an escalation are triage managers/admins whose clearance is suffi
 to view the incident's severity — nobody is notified about an incident they could not
 open. See `tests/scenarios/escalation-idempotency.spec.ts::"a clearance-2 triage
 manager receives no notification..."`.
+
+## The read side (Module 7, build-plan.md finding S2)
+
+The reference plan's §12.1 role-gates `GET /escalations` to TRIAGE_MANAGER/ADMIN and
+says nothing about clearance, so a clearance-2 manager could see CRITICAL references,
+levels and overdue times in the feed — and a manager legitimately notified about a
+CRITICAL escalation kept being served those `NotificationLog` rows after an admin
+lowered their clearance below CRITICAL, with a drawer link to an incident that would
+403. Both are incident reads the plan never identified as such. Fixed:
+
+- `GET /escalations` and `GET /notifications` both compose `visibilityScope(actor)` —
+  the feed through the incident directly, notifications through
+  `escalationEvent.incident` — exactly like every other incident read in this codebase.
+  See `tests/scenarios/escalation-clearance-scoping.spec.ts`.
+- `GET /escalations` itself is deliberately **role-open** (any authenticated actor, not
+  just TRIAGE_MANAGER/ADMIN), matching how `GET /incidents` already works and how the
+  frontend's `SideNav` links it for every role — clearance is the gate, not role.
+  `GET /escalations/:incidentId/events` (the full tier-by-tier history for one
+  incident) is the one sub-resource still role-gated to TRIAGE_MANAGER/ADMIN, because
+  it mirrors the incident detail's own `escalation` field, which the mapper already
+  restricts to that population (§8.1) — a REPORTER can see THAT an incident is
+  escalated (`IncidentListItem.currentEscalationLevel` is unconditional) but not the
+  level-by-level record.
+
+**Feed shape:** one row per actively-escalated incident (unacknowledged, non-CLOSED,
+`currentEscalationLevel > 0`) — not one row per historical `EscalationEvent`. An
+incident that reached level 3 has three event rows; acknowledging is incident-wide, so
+a per-event feed would show three near-duplicate rows that all have to vanish together
+on one click. The feed is a two-query design: an `Incident` scan (ordered
+`currentEscalationLevel DESC, highSeveritySince ASC, id ASC`, the only fields available
+for keyset pagination on that table) provides the page and its cursor, and a second
+exact `(incidentId, cycle, level)` tuple lookup against `EscalationEvent`'s unique index
+supplies the real `dueAt`/`triggeredAt` for display. Ordering by `highSeveritySince ASC`
+within a level is exactly `dueAt ASC` (most overdue first) when comparing incidents of
+the same severity, since the tier threshold for a given (severity, level) pair is
+fixed; across two different severities at the same level it is a documented
+approximation, not a hidden one — an exact cross-severity ordering would need `dueAt`
+as a first-class, indexed column on `Incident` itself, which isn't worth adding for a
+POC-scale "escalated right now" set.

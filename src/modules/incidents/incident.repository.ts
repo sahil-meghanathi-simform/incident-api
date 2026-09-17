@@ -1,6 +1,7 @@
 import type { Incident, IncidentType, Prisma, Severity, Stage } from '@prisma/client';
 import { prisma } from '../../db/prisma';
 import type { TxClient } from '../../db/transaction';
+import { escalationFeedCursorWhere } from '../../core/pagination';
 import { effectiveSeverities, visibilityScope } from '../../policy/clearance.policy';
 import type { Actor } from '../../types/actor.type';
 
@@ -336,4 +337,52 @@ export async function findClosuresPendingPage(
     }),
   ]);
   return { items, totalItems };
+}
+
+// ---------------------------------------------------------------------------
+// Module 7 — Escalation feed. escalation.repository.ts imports this rather than
+// querying Incident itself, same discipline as findMyInvestigationsPage above (B1's
+// ESLint rule restricts `prisma.incident` to this one file).
+// ---------------------------------------------------------------------------
+
+/**
+ * "Actively escalated" — the population the feed and the escalation job agree on:
+ * unacknowledged, non-CLOSED, currently above level 0. Deliberately NOT one row per
+ * historical EscalationEvent (an incident that reached level 3 has three of those,
+ * all still "unacknowledged" — acknowledging is incident-wide, not per-event, so a
+ * per-event feed would show three near-duplicate rows that all vanish on one click).
+ * One row per incident, at its CURRENT level, is what "inline Acknowledge" assumes.
+ */
+function activeEscalationWhere(actor: Actor): Prisma.IncidentWhereInput {
+  return {
+    AND: [visibilityScope(actor), { currentEscalationLevel: { gt: 0 } }, { acknowledgedAt: null }, { stage: { not: 'CLOSED' } }],
+  };
+}
+
+export const ESCALATION_FEED_INCLUDE = {
+  assignee: { select: USER_REF_SELECT },
+} satisfies Prisma.IncidentInclude;
+
+export type EscalationFeedIncidentRow = Prisma.IncidentGetPayload<{ include: typeof ESCALATION_FEED_INCLUDE }> & {
+  highSeveritySince: Date; // non-null: activeEscalationWhere's currentEscalationLevel > 0 implies it
+};
+
+export async function findActiveEscalationsPage(
+  actor: Actor,
+  cursor: { level: number; since: Date; id: string } | undefined,
+  pageSize: number,
+): Promise<EscalationFeedIncidentRow[]> {
+  const where: Prisma.IncidentWhereInput = {
+    AND: [
+      activeEscalationWhere(actor),
+      ...(cursor ? [escalationFeedCursorWhere(cursor.level, cursor.since, cursor.id)] : []),
+    ],
+  };
+  const rows = await prisma.incident.findMany({
+    where,
+    include: ESCALATION_FEED_INCLUDE,
+    orderBy: [{ currentEscalationLevel: 'desc' }, { highSeveritySince: 'asc' }, { id: 'asc' }],
+    take: pageSize + 1,
+  });
+  return rows as EscalationFeedIncidentRow[];
 }

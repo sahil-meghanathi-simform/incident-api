@@ -27,6 +27,21 @@ fire-and-forget with logging on failure, so a `GET` request's authorization outc
 never depends on whether an audit insert succeeds, and cannot become an unbounded write
 under ID-probing.
 
+## `AppError`'s constructor was silently defeating `instanceof` on every subclass
+
+Found while unit-testing the new escalation-feed cursor (Module 7): `AppError`'s
+constructor called `Object.setPrototypeOf(this, AppError.prototype)` unconditionally —
+a shim needed only when targeting ES5, where a transpiled `class X extends Error`
+breaks the prototype chain. This project targets ES2023 (`tsconfig.json`), where native
+class extension of a built-in already wires the chain correctly; the shim actively
+*undid* it instead, forcing every subclass instance's prototype back to `AppError`
+itself. `err instanceof AppError` still worked (that's all `error.middleware.ts` ever
+checks), but `err instanceof CursorSortMismatchError` — or any other specific subclass —
+silently read `false` for a real instance of it. Nothing in the app had hit this yet
+because every existing call site branches on `err.code` (a string), never on the class.
+Fixed by removing the line and setting `this.name = new.target.name` instead (so a log
+line shows `CursorSortMismatchError`, not the generic `AppError`, for free).
+
 ## The escalation job does not seed history
 
 `prisma/seed/incidents.seed.ts` deliberately does not write `EscalationEvent`/

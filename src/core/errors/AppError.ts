@@ -52,11 +52,18 @@ export class AppError extends Error {
     meta?: ErrorMeta;
   }) {
     super(params.message);
-    this.name = 'AppError';
+    // Deliberately NOT `Object.setPrototypeOf(this, AppError.prototype)` here — with
+    // ES2023 as the compile target (tsconfig.json), native class extension of a
+    // built-in already wires the prototype chain correctly for every subclass
+    // (CursorSortMismatchError, InsufficientClearanceError, ...). Forcing it to
+    // AppError.prototype unconditionally, as an older ES5-downlevel shim would need
+    // to, instead OVERWRITES a real subclass's chain, so `err instanceof
+    // CursorSortMismatchError` would silently read false for an actual
+    // CursorSortMismatchError. `err instanceof AppError` still works either way.
+    this.name = new.target.name;
     this.code = params.code;
     this.status = params.status;
     this.details = params.details;
     this.meta = params.meta;
-    Object.setPrototypeOf(this, AppError.prototype);
   }
 }

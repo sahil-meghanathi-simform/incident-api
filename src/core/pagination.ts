@@ -86,3 +86,38 @@ export function createdAtIdCursorWhere(createdAt: Date, id: string) {
     OR: [{ createdAt: { lt: createdAt } }, { createdAt, id: { lt: id } }],
   };
 }
+
+/**
+ * The escalation feed's sort key — `currentEscalationLevel desc, highSeveritySince asc,
+ * id asc` ("most severe, then longest-overdue, first"). This ranks by band-entry time
+ * rather than a stored `dueAt`, because the feed's rows are INCIDENTS (one per actively
+ * escalated, unacknowledged incident — see escalation.repository.ts for why event rows
+ * would duplicate an incident once per historical level), and Incident has no `dueAt`
+ * column. Within one severity+level pair the tier threshold is fixed, so
+ * highSeveritySince asc is exactly dueAt asc; across mixed severities at the same level
+ * it is a documented approximation (docs/escalation.md), never a hidden one. A distinct
+ * tagged key from CREATED_AT_ID_KEY (S4): a cursor minted for one sort can never
+ * silently mis-paginate the other — decodeCursor's `k` check 422s it instead.
+ */
+export const ESCALATION_FEED_KEY = 'level.highSeveritySince.id' as const;
+
+export function encodeEscalationFeedCursor(level: number, since: Date, id: string): string {
+  return encodeCursor({ k: ESCALATION_FEED_KEY, v: [level, since.toISOString(), id] });
+}
+
+export function decodeEscalationFeedCursor(raw: string): { level: number; since: Date; id: string } {
+  const c = decodeCursor(raw, ESCALATION_FEED_KEY);
+  const [level, sinceIso, id] = c.v;
+  return { level: level as number, since: new Date(sinceIso as string), id: id as string };
+}
+
+/** Keyset predicate for `ORDER BY currentEscalationLevel DESC, highSeveritySince ASC, id ASC`. */
+export function escalationFeedCursorWhere(level: number, since: Date, id: string) {
+  return {
+    OR: [
+      { currentEscalationLevel: { lt: level } },
+      { currentEscalationLevel: level, highSeveritySince: { gt: since } },
+      { currentEscalationLevel: level, highSeveritySince: since, id: { gt: id } },
+    ],
+  };
+}
