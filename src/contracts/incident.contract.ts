@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { IncidentTypeSchema, SeveritySchema } from './enums';
+import { IncidentTypeSchema, SeveritySchema, StageSchema } from './enums';
+import { booleanQueryParam, csvArrayQueryParam, offsetEnvelopeSchema, offsetQuerySchema } from './pagination.contract';
 
 // This file has no imports outside zod/sibling contracts — it is exported verbatim to
 // incident-web via `npm run contracts:export` (see scripts/contracts-export.ts).
@@ -40,3 +41,112 @@ export const IncidentTypesResponseSchema = z.object({
   severities: z.array(SeverityOptionSchema),
 });
 export type IncidentTypesResponse = z.infer<typeof IncidentTypesResponseSchema>;
+
+// ---------------------------------------------------------------------------
+// Module 3 — Read & Visibility
+// ---------------------------------------------------------------------------
+
+// Any future :id-shaped route relies on this rejecting a malformed id with 422
+// at the validation layer rather than falling through to a confusing 404 (S7).
+export const IncidentIdParamsSchema = z
+  .object({
+    id: z.string().regex(/^[a-z0-9]{20,32}$/i, 'must be a valid incident id'),
+  })
+  .strict();
+export type IncidentIdParams = z.infer<typeof IncidentIdParamsSchema>;
+
+const IsoDateStringSchema = z.string().refine((v) => !Number.isNaN(Date.parse(v)), 'must be a valid date');
+
+export const ListIncidentsQuerySchema = offsetQuerySchema
+  .extend({
+    severity: csvArrayQueryParam(SeveritySchema),
+    stage: csvArrayQueryParam(StageSchema),
+    type: csvArrayQueryParam(IncidentTypeSchema),
+    assignedToMe: booleanQueryParam(),
+    reportedByMe: booleanQueryParam(),
+    unacknowledged: booleanQueryParam(),
+    escalatedOnly: booleanQueryParam(),
+    from: IsoDateStringSchema.optional(),
+    to: IsoDateStringSchema.optional(),
+    q: z.string().trim().max(120).optional(),
+    sort: z.enum(['createdAt', 'severity', 'updatedAt']).default('createdAt'),
+    order: z.enum(['asc', 'desc']).default('desc'),
+  })
+  .strict();
+export type ListIncidentsQuery = z.infer<typeof ListIncidentsQuerySchema>;
+
+const UserRefSchema = z.object({ id: z.string(), displayName: z.string() });
+
+export const IncidentListItemSchema = z.object({
+  id: z.string(),
+  reference: z.string(),
+  type: IncidentTypeSchema,
+  severity: SeveritySchema,
+  stage: StageSchema,
+  title: z.string(),
+  assignedInvestigator: UserRefSchema.nullable(),
+  acknowledgedAt: z.string().nullable(),
+  currentEscalationLevel: z.number().int(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type IncidentListItem = z.infer<typeof IncidentListItemSchema>;
+
+export const IncidentListResponseSchema = offsetEnvelopeSchema(IncidentListItemSchema);
+export type IncidentListResponse = z.infer<typeof IncidentListResponseSchema>;
+
+// A hint for the UI, never authority — every action endpoint re-checks server-side.
+export const IncidentActionsSchema = z.object({
+  canTriage: z.boolean(),
+  canAssign: z.boolean(),
+  canAcknowledge: z.boolean(),
+  canAddNote: z.boolean(),
+  canProposeClosure: z.boolean(),
+  canApproveClosure: z.boolean(),
+});
+export type IncidentActions = z.infer<typeof IncidentActionsSchema>;
+
+export const IncidentAcknowledgementSchema = z.object({
+  acknowledgedAt: z.string(),
+  acknowledgedBy: UserRefSchema.nullable(),
+});
+
+export const IncidentEscalationSchema = z.object({
+  currentEscalationLevel: z.number().int(),
+  highSeveritySince: z.string().nullable(),
+  lastEscalatedAt: z.string().nullable(),
+});
+
+// assignedInvestigator/acknowledgement/escalation are OMITTED (not merely null) for a
+// viewer not entitled to them — Triage/Admin/the assignee only (§8.1 mapper table).
+// rootCause/correctiveAction are exposed to anyone who passed the clearance gate: they
+// are the closure record, not an investigation detail. Notes are never inlined here —
+// a separate, doubly-gated endpoint in Module 5 (Q24).
+export const IncidentDetailSchema = z.object({
+  id: z.string(),
+  reference: z.string(),
+  type: IncidentTypeSchema,
+  severity: SeveritySchema,
+  stage: StageSchema,
+  title: z.string(),
+  description: z.string(),
+  reporter: UserRefSchema,
+  assignedInvestigator: UserRefSchema.nullable().optional(),
+  rootCause: z.string().nullable(),
+  correctiveAction: z.string().nullable(),
+  acknowledgement: IncidentAcknowledgementSchema.nullable().optional(),
+  escalation: IncidentEscalationSchema.optional(),
+  version: z.number().int(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  _actions: IncidentActionsSchema,
+});
+export type IncidentDetail = z.infer<typeof IncidentDetailSchema>;
+
+export const IncidentSummarySchema = z.object({
+  counts: z.record(StageSchema, z.number().int()),
+});
+export type IncidentSummary = z.infer<typeof IncidentSummarySchema>;
+
+export const MineQuerySchema = offsetQuerySchema.strict();
+export type MineQuery = z.infer<typeof MineQuerySchema>;

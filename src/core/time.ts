@@ -32,3 +32,18 @@ export class FrozenClock implements Clock {
     this.current = new Date(date.getTime());
   }
 }
+
+/**
+ * Half-open `[from, to)` period filtering (build-plan.md finding B1/S4): a plain
+ * `lte: to` against a date-only string like `2026-09-16` resolves to that day's
+ * midnight and silently drops the whole final day. If the input carries no time
+ * component, advance the exclusive bound to the start of the next day so that day's
+ * rows are included; a full timestamp is used exactly as given.
+ */
+export function exclusiveEndOfDay(isoDateOrDateTime: string): Date {
+  const date = new Date(isoDateOrDateTime);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(isoDateOrDateTime.trim())) {
+    date.setUTCDate(date.getUTCDate() + 1);
+  }
+  return date;
+}
