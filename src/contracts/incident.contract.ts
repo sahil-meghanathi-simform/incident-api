@@ -118,6 +118,15 @@ export const IncidentEscalationSchema = z.object({
   lastEscalatedAt: z.string().nullable(),
 });
 
+// Module 6: null until CLOSED. Same visibility rule as rootCause/correctiveAction —
+// exposed to anyone who passed the clearance gate, never gated behind canSeeAssignment
+// the way assignedInvestigator/acknowledgement/escalation are, since who closed an
+// incident and when is part of the closure record, not an investigation detail.
+export const IncidentClosureSchema = z.object({
+  closedAt: z.string(),
+  closedBy: UserRefSchema.nullable(),
+});
+
 // assignedInvestigator/acknowledgement/escalation are OMITTED (not merely null) for a
 // viewer not entitled to them — Triage/Admin/the assignee only (§8.1 mapper table).
 // rootCause/correctiveAction are exposed to anyone who passed the clearance gate: they
@@ -135,6 +144,7 @@ export const IncidentDetailSchema = z.object({
   assignedInvestigator: UserRefSchema.nullable().optional(),
   rootCause: z.string().nullable(),
   correctiveAction: z.string().nullable(),
+  closure: IncidentClosureSchema.nullable(),
   acknowledgement: IncidentAcknowledgementSchema.nullable().optional(),
   escalation: IncidentEscalationSchema.optional(),
   version: z.number().int(),

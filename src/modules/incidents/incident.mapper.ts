@@ -75,6 +75,7 @@ export function toIncidentDetail(incident: IncidentDetailRow, actor: Actor): Inc
     ...(canSeeAssignment && { assignedInvestigator: incident.assignee }),
     rootCause: incident.rootCause,
     correctiveAction: incident.correctiveAction,
+    closure: incident.closedAt ? { closedAt: incident.closedAt.toISOString(), closedBy: incident.closer } : null,
     ...(canSeeEscalation && {
       acknowledgement: incident.acknowledgedAt
         ? { acknowledgedAt: incident.acknowledgedAt.toISOString(), acknowledgedBy: incident.acknowledger }

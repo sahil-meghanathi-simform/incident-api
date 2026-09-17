@@ -16,6 +16,8 @@ export async function createIncident(
     highSeveritySince: Date | null;
     escalationCycle: number;
     currentEscalationLevel: number;
+    rootCause: string | null;
+    correctiveAction: string | null;
   }> = {},
 ) {
   counter += 1;
@@ -43,8 +45,12 @@ export async function createIncident(
       highSeveritySince: overrides.highSeveritySince ?? (isHighBand ? new Date() : null),
       escalationCycle: overrides.escalationCycle ?? (isHighBand ? 1 : 0),
       currentEscalationLevel: overrides.currentEscalationLevel ?? 0,
-      rootCause: isClosed ? 'A root cause long enough to satisfy the twenty character minimum.' : null,
-      correctiveAction: isClosed ? 'A corrective action long enough to satisfy the minimum length.' : null,
+      rootCause: overrides.rootCause !== undefined ? overrides.rootCause : isClosed
+        ? 'A root cause long enough to satisfy the twenty character minimum.'
+        : null,
+      correctiveAction: overrides.correctiveAction !== undefined ? overrides.correctiveAction : isClosed
+        ? 'A corrective action long enough to satisfy the minimum length.'
+        : null,
     },
   });
 }

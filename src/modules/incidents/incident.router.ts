@@ -13,6 +13,11 @@ import {
 import { AssignInvestigatorRequestSchema, ChangeSeverityRequestSchema } from '../../contracts/triage.contract';
 import { AddNoteRequestSchema, NotesCursorQuerySchema } from '../../contracts/investigation.contract';
 import {
+  ApproveClosureRequestSchema,
+  ProposeClosureRequestSchema,
+  RejectClosureRequestSchema,
+} from '../../contracts/closure.contract';
+import {
   createHandler,
   getByIdHandler,
   listHandler,
@@ -28,6 +33,7 @@ import {
   unassignInvestigatorHandler,
 } from '../triage/triage.controller';
 import { addNoteHandler, listNotesHandler } from '../investigation/investigation.controller';
+import { approveClosureHandler, proposeClosureHandler, rejectClosureHandler } from '../closure/closure.controller';
 
 export const incidentRouter = Router();
 
@@ -123,4 +129,38 @@ incidentRouter.post(
   authenticate,
   validate({ params: IncidentIdParamsSchema, body: AddNoteRequestSchema }),
   asyncHandler(addNoteHandler),
+);
+
+// ---------------------------------------------------------------------------
+// Module 6 — Closure. closure-proposal has no static authorizeRole gate — same
+// reasoning as notes above: "assignee or Admin" is a per-incident decision the service
+// enforces itself (403 NOT_ASSIGNED_INVESTIGATOR), not a static role list. Approval and
+// rejection are a coarse TRIAGE_MANAGER/ADMIN gate, same as every Module 4 mutation.
+// All three are If-Match-locked like every other incident mutation (§2.8).
+// ---------------------------------------------------------------------------
+
+incidentRouter.post(
+  '/:id/closure-proposal',
+  authenticate,
+  validate({ params: IncidentIdParamsSchema, body: ProposeClosureRequestSchema }),
+  ifMatch,
+  asyncHandler(proposeClosureHandler),
+);
+
+incidentRouter.post(
+  '/:id/closure-approval',
+  authenticate,
+  authorizeRole(...TRIAGE_ROLES),
+  validate({ params: IncidentIdParamsSchema, body: ApproveClosureRequestSchema }),
+  ifMatch,
+  asyncHandler(approveClosureHandler),
+);
+
+incidentRouter.post(
+  '/:id/closure-rejection',
+  authenticate,
+  authorizeRole(...TRIAGE_ROLES),
+  validate({ params: IncidentIdParamsSchema, body: RejectClosureRequestSchema }),
+  ifMatch,
+  asyncHandler(rejectClosureHandler),
 );

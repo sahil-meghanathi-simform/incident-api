@@ -108,6 +108,7 @@ export const INCIDENT_DETAIL_INCLUDE = {
   reporter: { select: USER_REF_SELECT },
   assignee: { select: USER_REF_SELECT },
   acknowledger: { select: USER_REF_SELECT },
+  closer: { select: USER_REF_SELECT },
 } satisfies Prisma.IncidentInclude;
 
 export type IncidentDetailRow = Prisma.IncidentGetPayload<{ include: typeof INCIDENT_DETAIL_INCLUDE }>;
@@ -220,6 +221,12 @@ export interface UpdateIncidentStateInput {
   highSeveritySince?: Date | null;
   escalationCycle?: number;
   currentEscalationLevel?: number;
+  rootCause?: string | null;
+  correctiveAction?: string | null;
+  closureProposedById?: string | null;
+  closureProposedAt?: Date | null;
+  closedById?: string | null;
+  closedAt?: Date | null;
 }
 
 /**
@@ -300,6 +307,30 @@ export async function findMyInvestigationsPage(
       where,
       include: INCIDENT_LIST_INCLUDE,
       orderBy: { createdAt: 'desc' },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+  ]);
+  return { items, totalItems };
+}
+
+// ---------------------------------------------------------------------------
+// Module 6 — Closure
+// ---------------------------------------------------------------------------
+
+/** `GET /closures/pending`: visibilityScope + PENDING_CLOSURE, oldest-waiting first. */
+export async function findClosuresPendingPage(
+  actor: Actor,
+  page: number,
+  pageSize: number,
+): Promise<{ items: IncidentListRow[]; totalItems: number }> {
+  const where: Prisma.IncidentWhereInput = { AND: [visibilityScope(actor), { stage: 'PENDING_CLOSURE' }] };
+  const [totalItems, items] = await prisma.$transaction([
+    prisma.incident.count({ where }),
+    prisma.incident.findMany({
+      where,
+      include: INCIDENT_LIST_INCLUDE,
+      orderBy: { updatedAt: 'asc' },
       skip: (page - 1) * pageSize,
       take: pageSize,
     }),
