@@ -9,6 +9,7 @@ import { investigationRouter } from '../modules/investigation/investigation.rout
 import { closureRouter } from '../modules/closure/closure.router';
 import { escalationRouter, jobsRouter } from '../modules/escalation/escalation.router';
 import { notificationsRouter } from '../modules/escalation/notification.router';
+import { auditRouter } from '../modules/audit/audit.router';
 
 const CONTRACT_VERSION = '0.1.0';
 
@@ -42,6 +43,7 @@ apiRouter.use('/closures', closureRouter);
 apiRouter.use('/escalations', escalationRouter);
 apiRouter.use('/notifications', notificationsRouter);
 apiRouter.use('/jobs', jobsRouter);
+apiRouter.use('/audit', auditRouter);
 
 // Further module routers are mounted here as each module is built. Each module's
 // router.ts applies authenticate/authorizeRole/validate itself, per the layering rule

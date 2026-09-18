@@ -121,3 +121,27 @@ export function escalationFeedCursorWhere(level: number, since: Date, id: string
     ],
   };
 }
+
+/**
+ * The audit timeline's sort key — `AuditEvent.occurredAt desc, id desc`. Same shape as
+ * CREATED_AT_ID_KEY (newest-first, tie-broken by id) but a genuinely distinct field on a
+ * different table, so it gets its own tag (S4): a notes cursor and a timeline cursor must
+ * never be interchangeable even though both decode to a `{when, id}` pair.
+ */
+export const OCCURRED_AT_ID_KEY = 'occurredAt.id' as const;
+
+export function encodeOccurredAtIdCursor(occurredAt: Date, id: string): string {
+  return encodeCursor({ k: OCCURRED_AT_ID_KEY, v: [occurredAt.toISOString(), id] });
+}
+
+export function decodeOccurredAtIdCursor(raw: string): { occurredAt: Date; id: string } {
+  const c = decodeCursor(raw, OCCURRED_AT_ID_KEY);
+  const [occurredAtIso, id] = c.v;
+  return { occurredAt: new Date(occurredAtIso as string), id: id as string };
+}
+
+export function occurredAtIdCursorWhere(occurredAt: Date, id: string) {
+  return {
+    OR: [{ occurredAt: { lt: occurredAt } }, { occurredAt, id: { lt: id } }],
+  };
+}

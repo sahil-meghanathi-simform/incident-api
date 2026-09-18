@@ -1,6 +1,17 @@
 import type { TxClient } from '../../db/transaction';
 import { childLogger } from '../../core/logger';
-import { createAuditEvent, createAccessDeniedEvent, findRecentAccessDenied, type CreateAuditEventInput } from './audit.repository';
+import { buildOffsetPage, type OffsetPage } from '../../core/pagination';
+import { exclusiveEndOfDay } from '../../core/time';
+import type { AuditRow, AuditSearchQuery } from '../../contracts/audit.contract';
+import { toAuditRow } from './audit.mapper';
+import {
+  createAuditEvent,
+  createAccessDeniedEvent,
+  findRecentAccessDenied,
+  searchAudit,
+  type AuditSearchFilters,
+  type CreateAuditEventInput,
+} from './audit.repository';
 
 const log = childLogger({ module: 'audit' });
 
@@ -60,4 +71,26 @@ async function recordDenialAsync(
   const recent = await findRecentAccessDenied(input.actorId, input.incidentId, since);
   if (recent) return;
   await createAccessDeniedEvent({ ...input, occurredAt: now });
+}
+
+// ---------------------------------------------------------------------------
+// Module 8 — GET /audit (ADMIN, Module 10's screen). No per-viewer redaction: the
+// route itself is authorizeRole('ADMIN')-gated (implementation-plan.md §13.1), unlike
+// the per-incident timeline in timeline.service.ts, which is open to any actor who can
+// see the incident and redacts NOTE_ADDED for anyone who cannot read notes.
+// ---------------------------------------------------------------------------
+
+function toSearchFilters(query: AuditSearchQuery): AuditSearchFilters {
+  return {
+    type: query.type,
+    actorId: query.actorId,
+    incidentId: query.incidentId,
+    from: query.from ? new Date(query.from) : undefined,
+    to: query.to ? exclusiveEndOfDay(query.to) : undefined,
+  };
+}
+
+export async function search(query: AuditSearchQuery): Promise<OffsetPage<AuditRow>> {
+  const { items, totalItems } = await searchAudit(toSearchFilters(query), query.page, query.pageSize);
+  return buildOffsetPage(items.map(toAuditRow), totalItems, query.page, query.pageSize);
 }

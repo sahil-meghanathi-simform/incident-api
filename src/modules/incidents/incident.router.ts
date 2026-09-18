@@ -17,6 +17,7 @@ import {
   ProposeClosureRequestSchema,
   RejectClosureRequestSchema,
 } from '../../contracts/closure.contract';
+import { TimelineQuerySchema } from '../../contracts/audit.contract';
 import {
   createHandler,
   getByIdHandler,
@@ -34,6 +35,7 @@ import {
 } from '../triage/triage.controller';
 import { addNoteHandler, listNotesHandler } from '../investigation/investigation.controller';
 import { approveClosureHandler, proposeClosureHandler, rejectClosureHandler } from '../closure/closure.controller';
+import { timelineHandler } from '../audit/audit.controller';
 
 export const incidentRouter = Router();
 
@@ -163,4 +165,18 @@ incidentRouter.post(
   validate({ params: IncidentIdParamsSchema, body: RejectClosureRequestSchema }),
   ifMatch,
   asyncHandler(rejectClosureHandler),
+);
+
+// ---------------------------------------------------------------------------
+// Module 8 — Audit & Timeline. No authorizeRole gate, same reasoning as notes above:
+// this is clearance-scoped (via getByIdForActor) and per-viewer redacted
+// (timeline.service.ts), not a static role list. Not If-Match-gated: reads never
+// touch `version`.
+// ---------------------------------------------------------------------------
+
+incidentRouter.get(
+  '/:id/timeline',
+  authenticate,
+  validate({ params: IncidentIdParamsSchema, query: TimelineQuerySchema }),
+  asyncHandler(timelineHandler),
 );
