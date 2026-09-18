@@ -430,3 +430,38 @@ export async function findActiveEscalationsPage(
   });
   return rows as EscalationFeedIncidentRow[];
 }
+
+// ---------------------------------------------------------------------------
+// Module 10 — Admin. Lives here, not admin.repository.ts, per the same B1 layering
+// rule Module 7/9's own incident-touching queries followed: prisma.incident may only
+// appear in this file. Deliberately NOT scoped by visibilityScope — this is a
+// system-level admin query over one specific user's own assignments, not an
+// actor-scoped read of the incident list.
+// ---------------------------------------------------------------------------
+
+export interface AssignedIncidentRow {
+  id: string;
+  reference: string;
+  severity: Severity;
+  stage: Stage;
+  version: number;
+}
+
+/**
+ * Every non-CLOSED incident currently assigned to `userId` — the candidate set for
+ * both the clearance-impact preview and the clearance-lowering cascade itself (the
+ * mirror of Q17, build-plan.md Module 10). CLOSED is excluded for the same reason
+ * changeSeverity's own Q17 cascade never touches a closed incident: there is no
+ * active investigation left to strand. Small by construction (one user's own
+ * assignments), so filtering by clearance happens in the caller via
+ * assignment.policy.ts::mustUnassignOnRaise rather than a second WHERE clause here.
+ */
+export function findAssignedNonClosedIncidents(
+  userId: string,
+  client: TxClient | typeof prisma = prisma,
+): Promise<AssignedIncidentRow[]> {
+  return client.incident.findMany({
+    where: { assignedInvestigatorId: userId, stage: { not: 'CLOSED' } },
+    select: { id: true, reference: true, severity: true, stage: true, version: true },
+  });
+}

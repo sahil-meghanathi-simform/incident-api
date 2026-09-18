@@ -16,3 +16,17 @@ export async function activeTiers(client: TxClient | typeof prisma = prisma): Pr
   });
   return rows;
 }
+
+/**
+ * Module 10's PUT /admin/escalation-tiers: "replace the tier set atomically". No FK
+ * anywhere references EscalationTier.id, so delete-then-recreate inside the caller's
+ * transaction is safe and simplest — there is no partial-update state to reconcile
+ * against. Contiguity/monotonicity were already enforced by TierSetRequestSchema
+ * before this ever runs.
+ */
+export async function replaceTierSet(tiers: Tier[], updatedById: string, tx: TxClient): Promise<void> {
+  await tx.escalationTier.deleteMany({});
+  await tx.escalationTier.createMany({
+    data: tiers.map((t) => ({ severity: t.severity, level: t.level, thresholdMinutes: t.thresholdMinutes, updatedById })),
+  });
+}
