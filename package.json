@@ -16,6 +16,8 @@
     "contracts:export": "tsx scripts/contracts-export.ts",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:load": "tsx scripts/load-test-escalation.ts",
+    "test:compose": "bash scripts/smoke-compose.sh",
     "lint": "eslint . --ext .ts",
     "lint:layers": "bash scripts/check-layers.sh",
     "typecheck": "tsc -p tsconfig.json --noEmit"

@@ -62,10 +62,36 @@ and the `JobLease` seed row — before any test runs. `fileParallelism` is disab
 advisory lock and the `JobLease` row are database-wide, so parallel test files would
 steal each other's lock.
 
-The four spec-mandated proofs live in `tests/scenarios/`:
+The spec-mandated proofs live in `tests/scenarios/`, one file per named guarantee:
 
 - `escalation-idempotency.spec.ts` — double runs, concurrent runs, long gaps, the
-  ack/escalate race, and (Modules 1–6 TBD) will gain the clearance and closure proofs.
+  ack/escalate race. `scripts/load-test-escalation.ts` (`npm run test:load`) load-tests
+  the same job at 5,000 open incidents — see `docs/escalation.md`'s "Load test" section.
+- `clearance-by-id.spec.ts` / `clearance-revoked-on-raise.spec.ts` — Q10's by-ID refusal
+  and its immediate revocation on a mid-session severity raise.
+- `escalation-clearance-scoping.spec.ts` — S2's fix, that the escalation feed and
+  notifications are clearance-scoped, not just role-gated.
+- `closure-without-rca.spec.ts` — the four-layer RCA-required-to-close proof.
+- `severity-change-sweep.spec.ts` / `triage-actions.spec.ts` — the exhaustive
+  severity-pair × ack × assignment matrix and the Q17 cascade.
+- `investigation-notes.spec.ts` / `timeline.spec.ts` — the two-gate note rule and the
+  per-viewer redacted timeline.
+- `auth-*.spec.ts` / `users-assignable-investigators.spec.ts` / `admin-users.spec.ts` —
+  register/login/refresh-reuse-detection and the admin self-lockout/last-admin/cascade
+  rules.
+
+## CI
+
+`.github/workflows/ci.yml`, on every push/PR:
+
+- **`test`** — typecheck, ESLint, `lint:layers`, `npm test` (real Testcontainers
+  Postgres — GitHub's `ubuntu-latest` runners ship Docker, so this is the same proof
+  `npm test` gives locally, not a mock substituted for CI), and a build.
+- **`compose-smoke`** — the real `scripts/smoke-compose.sh` (see Troubleshooting)
+  against a fresh checkout of both repos. Needs `incident-web` checked out as a sibling
+  directory, and it's a private repo, so this job needs a fine-grained PAT with read
+  access to it, stored as this repo's `CROSS_REPO_PAT` secret; it skips cleanly (not a
+  failure) if that secret is unset.
 
 ## Known deviations from the reference `implementation-plan.md`
 
@@ -115,3 +141,23 @@ Enforced by both ESLint (`.eslintrc.cjs`) and a CI grep (`npm run lint:layers` �
 
 See `.env.example`. All are validated by `src/config/env.ts` (Zod) at process boot —
 a missing or malformed value exits before the HTTP listener ever opens.
+
+## Troubleshooting
+
+- **`docker compose up` fails with `ports are not available: ... 0.0.0.0:5432 ...`** —
+  something else on the host (commonly a native Postgres install, or an unrelated
+  container) already holds port 5432. The compose file's own container always listens
+  on 5432 *inside* the Docker network regardless — `api`/`migrate-seed` reach it via
+  `DATABASE_URL`'s `postgres:5432` hostname, which is unaffected — only the host-side
+  publish needs to move. Set `POSTGRES_HOST_PORT=<free port>` in `.env` (compose reads
+  the project-root `.env` for its own `${...}` substitutions, same as the existing
+  `POSTGRES_USER`/`POSTGRES_PASSWORD`/`POSTGRES_DB` variables) and re-run.
+- **Running `npm run dev`/`prisma migrate dev` outside compose** — point `.env`'s
+  `DATABASE_URL` at whatever standalone Postgres you use for that (e.g.
+  `localhost:55432` if compose's own 5432 is unavailable per the above), not at the
+  `postgres:5432` in-network hostname `.env.example` ships, which only resolves inside
+  the compose network.
+- `npm run test:compose` (`scripts/smoke-compose.sh`) automates exactly this check —
+  full teardown (including volumes) and a fresh `docker compose up --build`, then
+  verifies all four services are actually healthy and talking to each other, not just
+  that the containers started.

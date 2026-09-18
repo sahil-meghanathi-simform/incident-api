@@ -1,5 +1,15 @@
 import { z } from 'zod';
 
+// Every value here must match a real `code` thrown somewhere in
+// src/core/errors/{http-errors,domain-errors}.ts — kept in sync by hand since this
+// schema has no reverse check of its own (Module 11 hardening found this enum
+// missing five codes that were already live: SEVERITY_UNCHANGED,
+// INVALID_ASSIGNMENT_TARGET, NO_INVESTIGATOR_ASSIGNED, INCIDENT_CLOSED,
+// EMAIL_ALREADY_EXISTS. Harmless at runtime — error.middleware.ts serializes
+// `err.code` directly and neither backend nor frontend ever calls
+// `ErrorCodeSchema`/`ErrorEnvelopeSchema.parse()` on a real response, so nothing was
+// silently rejecting these — but it made this schema, and docs/api.md's per-endpoint
+// error-code lists generated from it, actively wrong).
 export const ErrorCodeValues = [
   'VALIDATION_FAILED',
   'UNAUTHENTICATED',
@@ -17,6 +27,11 @@ export const ErrorCodeValues = [
   'SELF_MODIFICATION_FORBIDDEN',
   'LAST_ADMIN',
   'RATE_LIMITED',
+  'SEVERITY_UNCHANGED',
+  'INVALID_ASSIGNMENT_TARGET',
+  'NO_INVESTIGATOR_ASSIGNED',
+  'INCIDENT_CLOSED',
+  'EMAIL_ALREADY_EXISTS',
   'INTERNAL',
 ] as const;
 export const ErrorCodeSchema = z.enum(ErrorCodeValues);

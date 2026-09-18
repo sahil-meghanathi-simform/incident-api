@@ -46,10 +46,12 @@ module.exports = {
       rules: { 'no-restricted-syntax': 'off' },
     },
     // Both layering rules are an application-layer (src/) concern — scripts/check-layers.sh
-    // only ever greps src/, and seed/test code legitimately needs direct, unscoped DB
-    // access (bulk-loading fixture data, asserting DB state behind the app layer).
+    // only ever greps src/, and seed/test/script code legitimately needs direct,
+    // unscoped DB access (bulk-loading fixture data, asserting DB state behind the app
+    // layer). scripts/load-test-escalation.ts (Module 11) is exactly this: it seeds its
+    // own throwaway Testcontainers database, not an actor-scoped read path.
     {
-      files: ['prisma/seed/**/*.ts', 'tests/**/*.ts'],
+      files: ['prisma/seed/**/*.ts', 'tests/**/*.ts', 'scripts/**/*.ts'],
       rules: { 'no-restricted-syntax': 'off' },
     },
   ],

@@ -7,7 +7,13 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-incident}
       POSTGRES_DB: ${POSTGRES_DB:-incident_db}
     ports:
-      - '5432:5432'
+      # Host-side port is overridable — a bare `5432:5432` fails to bind on any host
+      # that already runs a native/other Postgres on 5432 (a real, reproduced conflict
+      # on at least one dev machine used for this POC; see README's Troubleshooting
+      # section). The container always listens on 5432 internally regardless — `api`
+      # and `migrate-seed` reach it via DATABASE_URL's `postgres:5432` hostname, which
+      # this override never touches.
+      - '${POSTGRES_HOST_PORT:-5432}:5432'
     volumes:
       - incident_pg_data:/var/lib/postgresql/data
     healthcheck:

@@ -116,3 +116,46 @@ fixed; across two different severities at the same level it is a documented
 approximation, not a hidden one — an exact cross-severity ordering would need `dueAt`
 as a first-class, indexed column on `Incident` itself, which isn't worth adding for a
 POC-scale "escalated right now" set.
+
+## Load test (Module 11 hardening)
+
+`scripts/load-test-escalation.ts` (`npm run test:load`) boots its own throwaway
+Testcontainers Postgres, seeds 5,000 unacknowledged HIGH/CRITICAL incidents with
+staggered `highSeveritySince` offsets (0–299 minutes before the frozen "now", cycling
+through every combination of which of L1/L2/L3 is already due) plus 500 already
+acknowledged/CLOSED HIGH/CRITICAL rows the job must never touch, then runs the job four
+times: once cold, once immediately after (idempotency), and a final pair fired via
+`Promise.all` (simulating a double-click on Admin's **[Run now]**). Expected event
+counts are computed independently via the job's own pure `tiersDueFor`, so a pass means
+the actual `EscalationEvent`/`NotificationLog` row counts match a derivation that never
+touched the job's SQL.
+
+**Measured** (2026-09-18, this machine, Postgres 16 in a local Testcontainers
+container — wall-clock, not a production SLA):
+
+| Run | Outcome | Scanned | Escalated | Notified | Wall-clock |
+|---|---|---|---|---|---|
+| 1 (cold) | COMPLETED | 5,000 | 9,311 | 186,220 | ~73.7s |
+| 2 (immediate re-run) | COMPLETED | 5,000 | 0 | 0 | ~157ms |
+| 3/4 (concurrent `Promise.all`) | one COMPLETED, one SKIPPED_LOCKED | 5,000 / 0 | 0 / 0 | 0 / 0 | ~221ms combined |
+
+All four runs produced exactly the expected totals, zero events on any excluded
+incident, and the concurrent pair never double-escalated — the advisory-lock-claimed
+`JobLease` (B3) held under real concurrent load, not just the unit-level lease tests.
+
+**Where the 73.7s actually goes, and why it doesn't matter at this POC's real scale:**
+this is a deliberately pathological worst case — 5,000 incidents staggered so that,
+summed together, they generate 9,311 individually-due (incident, tier) escalations in
+one pass, as if the scheduler had been down for days across the whole fleet at once.
+`escalateBatch` processes each due pair with four *sequential* awaited statements
+(the conflict-free event insert, the notification fan-out, the audit write, the
+counter bump) — a deliberate trade-off, not an oversight: batching the event insert
+across the whole due set would still need per-row `ON CONFLICT DO NOTHING` semantics
+to preserve exactly-once escalation (B2), and the audit/counter writes are Module 8/4
+invariants that must stay one row per event for the timeline to reconstruct correctly.
+At ~4 round trips × 9,311 due pairs ≈ 37,000 sequential statements, ~2ms each is where
+the time goes. In real operation the job ticks every `ESCALATION_TICK_MS` (60s by
+default) and each tick only sees incidents that crossed a *new* threshold since the
+last tick — a tiny fraction of 9,311, not the whole backlog at once — so this number is
+a genuine worst-case bound on "how long would recovery take after the job was down for
+days", not a number that describes any normal run.

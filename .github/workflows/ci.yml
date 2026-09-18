@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    # Testcontainers (tests/setup/globalSetup.ts) boots a real Postgres 16 container
+    # via the Docker daemon that ships on every GitHub-hosted ubuntu-latest runner — no
+    # services: block needed, and this is deliberate: the whole point of Q30's decision
+    # (real Postgres over a mock) is that CI proves the same thing local `npm test` does.
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint (ESLint)
+        run: npm run lint
+
+      - name: Lint (layering rules, build-plan.md B1/B6)
+        run: npm run lint:layers
+
+      - name: Test (Vitest + Testcontainers Postgres)
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+  compose-smoke:
+    runs-on: ubuntu-latest
+    # scripts/smoke-compose.sh needs incident-web as a real sibling checkout —
+    # docker-compose.yml's `web` service builds ../incident-web, exactly as a fresh
+    # local clone must. incident-web is a PRIVATE sibling repo under the same account,
+    # so the default same-repo GITHUB_TOKEN cannot check it out; this job needs a
+    # fine-grained PAT with read access to incident-web, stored as the `CROSS_REPO_PAT`
+    # secret in THIS repo's settings. Skips cleanly (not a failure) when that secret
+    # isn't configured, so a fork or a fresh clone of this repo's CI doesn't red-X on
+    # something outside its control.
+    if: ${{ github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: incident-api
+
+      - name: Check for cross-repo access
+        id: has-pat
+        run: echo "ok=${{ secrets.CROSS_REPO_PAT != '' }}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        if: steps.has-pat.outputs.ok == 'true'
+        with:
+          repository: sahil-meghanathi-simform/incident-web
+          token: ${{ secrets.CROSS_REPO_PAT }}
+          path: incident-web
+
+      - name: Clean docker compose up from an empty checkout
+        if: steps.has-pat.outputs.ok == 'true'
+        working-directory: incident-api
+        run: bash scripts/smoke-compose.sh
+
+      - name: Skipped — no CROSS_REPO_PAT configured
+        if: steps.has-pat.outputs.ok != 'true'
+        run: echo "Set the CROSS_REPO_PAT repo secret (a PAT with read access to incident-web) to enable this job. See README.md."

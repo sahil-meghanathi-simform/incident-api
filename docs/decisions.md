@@ -54,6 +54,66 @@ claim for this endpoint is decorative at its actual size (≤28 rows, the same m
 JSON endpoint already returns in one query) — it is a small buffered CSV string, not a
 real streamed response, and this file says so rather than leaving the claim standing.
 
+## `ErrorCodeSchema` was missing five codes actually thrown in practice (Module 11)
+
+Found while writing `docs/api.md`'s per-endpoint error-code reference from the
+contracts: `src/contracts/errors.contract.ts::ErrorCodeValues` never included
+`SEVERITY_UNCHANGED`, `INVALID_ASSIGNMENT_TARGET`, `NO_INVESTIGATOR_ASSIGNED`,
+`INCIDENT_CLOSED`, or `EMAIL_ALREADY_EXISTS`, even though every one of them is thrown
+by a real service path (`src/core/errors/domain-errors.ts`, `http-errors.ts`) and has
+been since the module that introduced it. Harmless at runtime — `error.middleware.ts`
+serializes `err.code` directly, and neither this backend nor `incident-web`'s
+`api/client.ts` ever calls `ErrorCodeSchema`/`ErrorEnvelopeSchema.parse()` against a
+real response — but it made the schema, and any future code that trusted it as
+exhaustive, wrong. Fixed by adding the five codes and propagating through the normal
+`contracts:export` → `contracts:sync` → `contracts:check` path; both test suites and
+both typechecks stayed green, confirming nothing depended on the enum being narrower.
+
+## The logout→different-user-login identity race (Module 10 finding, root-caused and fixed in Module 11)
+
+Module 10's own verification flagged, but did not root-cause, a bug: logging out and
+immediately logging back in as a different user — fast enough to require scripted
+clicks, not ordinary typing speed — could leave the topbar/SideNav showing the
+PREVIOUS user's identity and permissions, even though routing correctly landed on the
+new user's role home. Root-caused this module via direct React fiber inspection
+against a live repro (not guesswork): `useLogin`'s `onSuccess` wrote the new user with
+`queryClient.setQueryData(queryKeys.session, data.user)` — a direct, synchronous cache
+write. Reading the cache immediately afterward (`queryClient.getQueryData`) always
+showed the correct new user, from the exact same `QueryClient` instance the mounted
+tree uses (verified by walking the live fiber tree to the same object) — but
+`AuthProvider`'s already-mounted `useSession()` `useQuery` observer's OWN React state
+(`fiber.memoizedState.data`, read directly) stayed on the previous user indefinitely,
+with nothing ever bringing it up to date short of a full page reload. Calling that
+same observer's `refetch()` directly (also via the live fiber) updated it correctly on
+the spot — proving the observer was alive, correctly subscribed, and perfectly capable
+of updating, just never notified by the bare `setQueryData` write specifically. The
+exact TanStack Query internal reason `setQueryData`'s notify path didn't reach this
+observer, while an explicit `refetch()` always did, was not further isolated — it
+wasn't necessary to, once a mechanism that reliably works was in hand.
+
+**Fix:** `useLogin`'s `onSuccess` and `useLogout`'s `onSettled` both now call
+`queryClient.invalidateQueries({ queryKey: queryKeys.session })` instead of writing the
+cache directly — `invalidateQueries` drives the SAME observer through a real fetch
+cycle (`query.fetch()`, which itself cancels any superseded in-flight retryer via
+`retryer.cancel({revert:true})` before starting — see `query-core/src/retryer.ts`'s
+`resolve`/`reject`, which permanently no-op once `isResolved()` is true), which is the
+path proven to update reliably. `useLogout` invalidates BEFORE `queryClient.clear()`
+(not after) specifically so there is still a `Query` object for it to act on;
+`useLogin` needs no such ordering since `setAccessToken` has already run, so the
+resulting refetch calls the real `/me` with the new user's credentials — authoritative,
+not a re-derivation of the login response.
+
+**Verified live**, not just by test: real Chrome automation against the dev servers,
+three back-to-back fast logout→different-user-login cycles (reporter→admin,
+admin→reporter, reporter→admin again, ~300–500ms between logout and the next login's
+submit), each checked via the DOM's actual text content (not a screenshot) immediately
+after — correct every time, both directions. `tests/features/auth/hooks/
+sessionSync.spec.tsx` (new) mounts a REAL `useSession()` observer alongside
+`useLogin`/`useLogout` — unlike a bare `queryClient.setQueryData`/`getQueryData` probe,
+this is the one test shape that actually exercises the broken notification path; it
+fails against the old `setQueryData`-based code (confirmed by temporarily reverting the
+fix and re-running it) and passes with the fix.
+
 ## The escalation job does not seed history
 
 `prisma/seed/incidents.seed.ts` deliberately does not write `EscalationEvent`/
