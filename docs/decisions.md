@@ -42,6 +42,18 @@ because every existing call site branches on `err.code` (a string), never on the
 Fixed by removing the line and setting `this.name = new.target.name` instead (so a log
 line shows `CursorSortMismatchError`, not the generic `AppError`, for free).
 
+## `/analytics/export.csv` cannot be a plain link (Module 9)
+
+The reference plan's flow diagram shows `[Export CSV]` as a browser download, but the
+access token is deliberately in-memory (Module 1's decision) — `<a href="...">`,
+`<a download>` and `window.open` all navigate with no `Authorization` header, so any of
+them would 401 against this endpoint. `ExportCsvButton` must `fetch()` the URL with the
+header itself, turn the response into a `Blob`, and click a synthetic `<a>` pointed at
+`URL.createObjectURL(blob)`. Separately, the reference plan's "streams with a cursor"
+claim for this endpoint is decorative at its actual size (≤28 rows, the same matrix the
+JSON endpoint already returns in one query) — it is a small buffered CSV string, not a
+real streamed response, and this file says so rather than leaving the claim standing.
+
 ## The escalation job does not seed history
 
 `prisma/seed/incidents.seed.ts` deliberately does not write `EscalationEvent`/

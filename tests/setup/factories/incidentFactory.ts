@@ -18,6 +18,7 @@ export async function createIncident(
     currentEscalationLevel: number;
     rootCause: string | null;
     correctiveAction: string | null;
+    createdAt: Date;
   }> = {},
 ) {
   counter += 1;
@@ -39,6 +40,10 @@ export async function createIncident(
       title: `Test incident ${counter}`,
       description: 'A description long enough to satisfy validation rules in every test context.',
       reporterId,
+      // Module 9's period-boundary tests need incidents pinned to an exact instant
+      // (e.g. exactly at a query's exclusive `to`) — createdAt has no @updatedAt-style
+      // auto-touch, so setting it explicitly on create is safe and stays put.
+      ...(overrides.createdAt ? { createdAt: overrides.createdAt } : {}),
       assignedInvestigatorId: overrides.assignedInvestigatorId ?? null,
       acknowledgedAt: overrides.acknowledgedAt ?? null,
       acknowledgedById: overrides.acknowledgedById ?? null,

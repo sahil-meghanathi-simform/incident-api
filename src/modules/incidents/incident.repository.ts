@@ -188,6 +188,50 @@ export async function countByStage(actor: Actor): Promise<{ stage: Stage; count:
 }
 
 // ---------------------------------------------------------------------------
+// Module 9 — Reporting & Analytics. analytics.repository.ts imports this rather than
+// querying Incident itself (B1's ESLint layering rule restricts `prisma.incident` to
+// this one file). `to` is ALREADY the exclusive upper bound here (analytics.service.ts
+// computed it via core/time.ts::exclusiveEndOfDay) — this function never re-derives it,
+// which is what keeps this Prisma path and analytics.repository.ts's raw-SQL trend path
+// from disagreeing at the boundary the way the reference plan's did (build-plan.md S4).
+// ---------------------------------------------------------------------------
+
+export interface AnalyticsPeriodFilters {
+  from: Date;
+  to: Date; // exclusive
+  type?: IncidentType[];
+  stage?: Stage[];
+}
+
+function analyticsPeriodWhere(actor: Actor, filters: AnalyticsPeriodFilters): Prisma.IncidentWhereInput {
+  const and: Prisma.IncidentWhereInput[] = [
+    visibilityScope(actor),
+    { createdAt: { gte: filters.from, lt: filters.to } },
+  ];
+  if (filters.type?.length) and.push({ type: { in: filters.type } });
+  if (filters.stage?.length) and.push({ stage: { in: filters.stage } });
+  return { AND: and };
+}
+
+/** The ONE `groupBy(['type','severity'])` behind `GET /analytics/by-type-severity` and the CSV export. */
+export async function groupIncidentsByTypeAndSeverity(
+  actor: Actor,
+  filters: AnalyticsPeriodFilters,
+): Promise<{ type: IncidentType; severity: Severity; count: number }[]> {
+  const rows = await prisma.incident.groupBy({
+    by: ['type', 'severity'],
+    where: analyticsPeriodWhere(actor, filters),
+    _count: { _all: true },
+  });
+  return rows.map((r) => ({ type: r.type, severity: r.severity, count: r._count._all }));
+}
+
+/** Independent cross-check used only by the matrix's own test (build-plan.md Module 9 "Done when"). */
+export function countIncidentsInPeriod(actor: Actor, filters: AnalyticsPeriodFilters): Promise<number> {
+  return prisma.incident.count({ where: analyticsPeriodWhere(actor, filters) });
+}
+
+// ---------------------------------------------------------------------------
 // Module 4 — Triage, Severity & Assignment
 // ---------------------------------------------------------------------------
 
