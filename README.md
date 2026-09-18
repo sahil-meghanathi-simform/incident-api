@@ -28,17 +28,14 @@ Verify: `curl http://localhost:4000/api/v1/health` → `{"status":"ok", ...}`.
 
 ## Seeded credentials
 
-Every seeded user shares the password `Password123!`. One user per role × clearance
-combination, plus a second Admin (so the "last admin cannot be demoted" rule is
-demonstrable without locking yourself out):
+Every seeded user shares the password `Test@123`. One account per role:
 
 | Email | Role | Clearance |
 |---|---|---|
-| reporter1@incident.local | REPORTER | 1 |
-| reporter2@incident.local | REPORTER | 2 |
-| triage1@incident.local … triage4@incident.local | TRIAGE_MANAGER | 1–4 |
-| investigator1@incident.local … investigator4@incident.local | INVESTIGATOR | 1–4 |
-| admin1@incident.local, admin2@incident.local | ADMIN | 4 |
+| reporter@yopmail.com | REPORTER | 1 |
+| triage_manager@yopmail.com | TRIAGE_MANAGER | 1 |
+| investigator@yopmail.com | INVESTIGATOR | 1 |
+| admin@yopmail.com | ADMIN | 4 |
 
 ## Local development (without compose)
 
