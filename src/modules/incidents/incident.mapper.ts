@@ -2,6 +2,7 @@ import { HIGH_BAND_RANK, SEVERITY_RANK } from '../../config/constants';
 import { canTransition } from '../../policy/stage.policy';
 import { canReadNotes, canWriteNotes } from '../../policy/note.policy';
 import { hasClosureRequirements } from '../../policy/closure.policy';
+import { getSignedIncidentImageUrl } from '../../db/supabaseStorage';
 import type { Actor } from '../../types/actor.type';
 import type { IncidentActions, IncidentDetail, IncidentListItem } from '../../contracts/incident.contract';
 import type { IncidentDetailRow, IncidentListRow } from './incident.repository';
@@ -59,9 +60,10 @@ export function toIncidentListItem(incident: IncidentListRow): IncidentListItem 
  * rootCause/correctiveAction are exposed to anyone who passed the clearance gate: they
  * are the closure record, not an investigation detail. Notes are never inlined here.
  */
-export function toIncidentDetail(incident: IncidentDetailRow, actor: Actor): IncidentDetail {
+export async function toIncidentDetail(incident: IncidentDetailRow, actor: Actor): Promise<IncidentDetail> {
   const canSeeAssignment = canManage(actor) || incident.assignedInvestigatorId === actor.id;
   const canSeeEscalation = canManage(actor);
+  const imageUrl = incident.imagePath ? await getSignedIncidentImageUrl(incident.imagePath) : null;
 
   return {
     id: incident.id,
@@ -71,6 +73,8 @@ export function toIncidentDetail(incident: IncidentDetailRow, actor: Actor): Inc
     stage: incident.stage,
     title: incident.title,
     description: incident.description,
+    imageUrl,
+    noImageReason: incident.noImageReason,
     reporter: incident.reporter,
     ...(canSeeAssignment && { assignedInvestigator: incident.assignee }),
     rootCause: incident.rootCause,

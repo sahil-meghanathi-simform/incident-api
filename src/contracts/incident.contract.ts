@@ -8,12 +8,19 @@ import { booleanQueryParam, csvArrayQueryParam, offsetEnvelopeSchema, offsetQuer
 // .strict() rejects a `reporterId` or `stage` in the body with 422 rather than
 // silently dropping it — reporterId always comes from req.actor.id and stage is
 // always REPORTED, neither is ever client-supplied (§7.1 business rules).
+// §13: the photo itself travels as a separate multipart field ("image"), never as
+// JSON — Zod has no useful way to validate a file buffer, and multer/incident.router.ts
+// parses it ahead of this schema. noImageReason is validated here because it IS plain
+// text, but "one of image or noImageReason is required" is a cross-field rule that
+// depends on the file's presence too, so incident.service.ts enforces it, not this
+// schema (ImageOrReasonRequiredError).
 export const CreateIncidentRequestSchema = z
   .object({
     type: IncidentTypeSchema,
     severity: SeveritySchema,
     title: z.string().trim().min(5).max(160),
     description: z.string().trim().min(20).max(5000),
+    noImageReason: z.string().trim().min(10).max(500).optional(),
   })
   .strict();
 export type CreateIncidentRequest = z.infer<typeof CreateIncidentRequestSchema>;
@@ -140,6 +147,10 @@ export const IncidentDetailSchema = z.object({
   stage: StageSchema,
   title: z.string(),
   description: z.string(),
+  // §13: a short-lived signed URL minted fresh per read (never the stored path itself,
+  // and never a permanent link — the bucket is private). null iff noImageReason is set.
+  imageUrl: z.string().nullable(),
+  noImageReason: z.string().nullable(),
   reporter: UserRefSchema,
   assignedInvestigator: UserRefSchema.nullable().optional(),
   rootCause: z.string().nullable(),

@@ -41,6 +41,7 @@ describe('Module 8 — Audit & Timeline (build-plan.md §13, implementation-plan
         severity: 'LOW',
         title: 'A slip hazard near the loading dock',
         description: 'Water pooled near the loading dock after the overnight cleaning crew finished mopping.',
+        noImageReason: 'Test fixture — no photo captured for this scenario.',
       });
     expect(created.status).toBe(201);
     const id: string = created.body.id;
@@ -180,6 +181,7 @@ describe('Module 8 — Audit & Timeline (build-plan.md §13, implementation-plan
         severity: 'LOW',
         title: 'A recurring paginated incident',
         description: 'Description long enough to satisfy validation rules in every test context.',
+        noImageReason: 'Test fixture — no photo captured for this scenario.',
       });
     const id: string = created.body.id;
 
@@ -230,6 +232,7 @@ describe('Module 8 — Audit & Timeline (build-plan.md §13, implementation-plan
         severity: 'LOW',
         title: 'Redaction check incident',
         description: 'Description long enough to satisfy validation rules in every test context.',
+        noImageReason: 'Test fixture — no photo captured for this scenario.',
       });
     const id: string = created.body.id;
 
@@ -286,6 +289,7 @@ describe('Module 8 — Audit & Timeline (build-plan.md §13, implementation-plan
         severity: 'CRITICAL',
         title: 'A critical incident above the manager\'s clearance',
         description: 'Description long enough to satisfy validation rules in every test context.',
+        noImageReason: 'Test fixture — no photo captured for this scenario.',
       });
     const id: string = created.body.id;
 
@@ -317,6 +321,7 @@ describe('Module 8 — Audit & Timeline (build-plan.md §13, implementation-plan
         severity: 'CRITICAL',
         title: 'Another critical incident',
         description: 'Description long enough to satisfy validation rules in every test context.',
+        noImageReason: 'Test fixture — no photo captured for this scenario.',
       });
     const id: string = created.body.id;
 
@@ -337,6 +342,7 @@ describe('Module 8 — Audit & Timeline (build-plan.md §13, implementation-plan
         severity: 'HIGH',
         title: 'An escalated incident',
         description: 'Description long enough to satisfy validation rules in every test context.',
+        noImageReason: 'Test fixture — no photo captured for this scenario.',
       });
     const id: string = created.body.id;
 
@@ -384,6 +390,7 @@ describe('Module 8 — GET /audit (build-plan.md §13, ADMIN-only global search)
         severity: 'LOW',
         title: 'Audit search fixture incident',
         description: 'Description long enough to satisfy validation rules in every test context.',
+        noImageReason: 'Test fixture — no photo captured for this scenario.',
       });
     const id: string = created.body.id;
 

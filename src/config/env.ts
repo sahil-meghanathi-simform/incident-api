@@ -13,6 +13,10 @@ const envSchema = z.object({
 
   CORS_ORIGIN: z.string().min(1).default('http://localhost:5173'),
 
+  SUPABASE_URL: z.string().url('SUPABASE_URL must be a valid URL'),
+  SUPABASE_SECRET_KEY: z.string().min(1, 'SUPABASE_SECRET_KEY is required'),
+  SUPABASE_STORAGE_BUCKET: z.string().min(1).default('incident-images'),
+
   ESCALATION_TICK_MS: z.coerce.number().int().positive().default(60_000),
   ESCALATION_LEASE_MS: z.coerce.number().int().positive().default(300_000),
   ESCALATION_BATCH_SIZE: z.coerce.number().int().positive().default(500),

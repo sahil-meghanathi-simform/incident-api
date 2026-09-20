@@ -19,6 +19,7 @@ const validBody = {
   severity: 'LOW',
   title: 'A slip hazard near the loading dock',
   description: 'Water pooled near the loading dock after the overnight cleaning crew finished mopping.',
+  noImageReason: 'Phone was out of storage space at the time and the hazard was cleared shortly after.',
 };
 
 describe('POST /api/v1/incidents', () => {
@@ -149,6 +150,33 @@ describe('POST /api/v1/incidents', () => {
       .send(validBody);
 
     expect(first.body.reference).not.toBe(second.body.reference);
+  });
+
+  it('§13: neither a photo nor a reason is rejected with IMAGE_OR_REASON_REQUIRED, leaving the incident count unchanged', async () => {
+    const reporter = await createUser(prisma, { role: 'REPORTER', clearanceLevel: 1 });
+    const withoutImageOrReason: Record<string, unknown> = { ...validBody };
+    delete withoutImageOrReason.noImageReason;
+
+    const res = await request(app)
+      .post('/api/v1/incidents')
+      .set('Authorization', `Bearer ${tokenFor(reporter.id)}`)
+      .send(withoutImageOrReason);
+
+    expect(res.status).toBe(422);
+    expect(res.body.error.code).toBe('IMAGE_OR_REASON_REQUIRED');
+    expect(await prisma.incident.count()).toBe(0);
+  });
+
+  it('a noImageReason under 10 characters is rejected as a field-addressable validation error', async () => {
+    const reporter = await createUser(prisma, { role: 'REPORTER', clearanceLevel: 1 });
+
+    const res = await request(app)
+      .post('/api/v1/incidents')
+      .set('Authorization', `Bearer ${tokenFor(reporter.id)}`)
+      .send({ ...validBody, noImageReason: 'too short' });
+
+    expect(res.status).toBe(422);
+    expect(res.body.error.details[0].path).toBe('noImageReason');
   });
 });
 

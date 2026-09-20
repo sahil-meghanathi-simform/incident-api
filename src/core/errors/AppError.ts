@@ -1,3 +1,6 @@
+// rules-ok: naming — this file lives in the sibling incident-api repo, which predates
+// and does not follow incident-web's architecture.md camelCase-filename convention
+// (this PostToolUse hook fires on any src/*.ts path regardless of which repo it's in).
 export type ErrorCode =
   | 'VALIDATION_FAILED'
   | 'UNAUTHENTICATED'
@@ -20,6 +23,9 @@ export type ErrorCode =
   | 'INVALID_ASSIGNMENT_TARGET'
   | 'NO_INVESTIGATOR_ASSIGNED'
   | 'INCIDENT_CLOSED'
+  | 'IMAGE_OR_REASON_REQUIRED'
+  | 'INVALID_IMAGE_FILE'
+  | 'IMAGE_UPLOAD_FAILED'
   | 'INTERNAL';
 
 export interface ErrorDetail {

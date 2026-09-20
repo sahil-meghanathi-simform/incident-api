@@ -165,3 +165,34 @@ export class NotesClosedError extends AppError {
     });
   }
 }
+
+/**
+ * §13 anti-fraud requirement: a report needs either a photo or a stated reason there
+ * isn't one. Neither field can express this on its own (the file is multipart, not
+ * part of the JSON body schema), so it's enforced here rather than by Zod .strict().
+ */
+export class ImageOrReasonRequiredError extends AppError {
+  constructor() {
+    super({
+      code: 'IMAGE_OR_REASON_REQUIRED',
+      status: 422,
+      message: 'Attach a photo, or explain why one is not available.',
+    });
+  }
+}
+
+export class InvalidImageFileError extends AppError {
+  constructor(message: string) {
+    super({ code: 'INVALID_IMAGE_FILE', status: 422, message });
+  }
+}
+
+export class ImageUploadFailedError extends AppError {
+  constructor() {
+    super({
+      code: 'IMAGE_UPLOAD_FAILED',
+      status: 502,
+      message: 'The photo could not be uploaded. Please try again.',
+    });
+  }
+}

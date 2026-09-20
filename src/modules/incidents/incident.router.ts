@@ -4,6 +4,7 @@ import { authenticate } from '../../http/middleware/authenticate.middleware';
 import { authorizeRole } from '../../http/middleware/authorizeRole.middleware';
 import { validate } from '../../http/middleware/validate.middleware';
 import { ifMatch } from '../../http/middleware/ifMatch.middleware';
+import { incidentImageUpload } from '../../http/middleware/incidentImageUpload.middleware';
 import {
   CreateIncidentRequestSchema,
   IncidentIdParamsSchema,
@@ -48,7 +49,16 @@ incidentRouter.get('/types', authenticate, asyncHandler(typesHandler));
 incidentRouter.get('/mine', authenticate, validate({ query: MineQuerySchema }), asyncHandler(mineHandler));
 incidentRouter.get('/summary', authenticate, asyncHandler(summaryHandler));
 
-incidentRouter.post('/', authenticate, validate({ body: CreateIncidentRequestSchema }), asyncHandler(createHandler));
+// incidentImageUpload runs BEFORE validate: it's the multipart parser that populates
+// req.body's plain fields (multer) and req.file (the photo) — validate() only ever
+// sees req.body, so it must run after multer has had a chance to fill it in.
+incidentRouter.post(
+  '/',
+  authenticate,
+  incidentImageUpload,
+  validate({ body: CreateIncidentRequestSchema }),
+  asyncHandler(createHandler),
+);
 incidentRouter.get('/', authenticate, validate({ query: ListIncidentsQuerySchema }), asyncHandler(listHandler));
 
 incidentRouter.get(

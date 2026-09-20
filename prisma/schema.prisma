@@ -110,6 +110,12 @@ model Incident {
   title       String
   description String
 
+  // Photographic evidence (§13 anti-fraud requirement): exactly one of the two is set.
+  // imagePath is the Supabase Storage object key, never a URL — signed URLs are minted
+  // per-read (incidentImage.storage.ts) so a stored link can't outlive its short TTL.
+  imagePath      String?
+  noImageReason  String?
+
   reporterId             String
   assignedInvestigatorId String?
   acknowledgedById       String?

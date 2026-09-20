@@ -12,6 +12,8 @@ export interface CreateIncidentInput {
   severity: Severity;
   title: string;
   description: string;
+  imagePath: string | null;
+  noImageReason: string | null;
   reporterId: string;
   highSeveritySince: Date | null;
   escalationCycle: number;
@@ -38,6 +40,8 @@ export function createIncident(input: CreateIncidentInput, tx: TxClient): Promis
       severity: input.severity,
       title: input.title,
       description: input.description,
+      imagePath: input.imagePath,
+      noImageReason: input.noImageReason,
       reporterId: input.reporterId,
       highSeveritySince: input.highSeveritySince,
       escalationCycle: input.escalationCycle,

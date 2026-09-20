@@ -18,6 +18,11 @@ export default async function setup() {
   process.env.JWT_ACCESS_SECRET ??= 'test-access-secret-at-least-32-characters-long';
   process.env.JWT_REFRESH_SECRET ??= 'test-refresh-secret-at-least-32-characters-long';
   process.env.LOG_LEVEL ??= 'silent';
+  // No test exercises a real Supabase upload (network-dependent, not Testcontainers-
+  // controlled) — a placeholder satisfies env.ts's fail-fast check without either
+  // vendoring real credentials into the suite or making a live network call.
+  process.env.SUPABASE_URL ??= 'https://placeholder.supabase.co';
+  process.env.SUPABASE_SECRET_KEY ??= 'test-placeholder-secret-key';
 
   const container: StartedPostgreSqlContainer = await new PostgreSqlContainer('postgres:16')
     .withDatabase('incident_test')

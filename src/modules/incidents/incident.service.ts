@@ -14,11 +14,19 @@ import type {
 } from '../../contracts/incident.contract';
 import { buildOffsetPage } from '../../core/pagination';
 import { canViewSeverity } from '../../policy/clearance.policy';
-import { InsufficientClearanceError } from '../../core/errors/domain-errors';
+import { ImageOrReasonRequiredError, ImageUploadFailedError, InsufficientClearanceError } from '../../core/errors/domain-errors';
 import { NotFoundError } from '../../core/errors/http-errors';
+import { StorageUploadError, uploadIncidentImage } from '../../db/supabaseStorage';
 import type { Actor } from '../../types/actor.type';
 import * as auditService from '../audit/audit.service';
 import { toIncidentDetail, toIncidentListItem } from './incident.mapper';
+
+/** The multer memory-storage shape incident.controller.ts hands off from req.file. */
+export interface UploadedImage {
+  buffer: Buffer;
+  mimetype: string;
+  originalname: string;
+}
 import {
   countAndFindPage,
   countByStage,
@@ -55,9 +63,38 @@ const SEVERITY_LABEL: Record<(typeof SeverityValues)[number], string> = {
  * (whose signature requires a tx client — no incident can exist without it), and
  * returns a receipt DTO, never the incident itself (Q9).
  */
-export async function create(actor: Actor, input: CreateIncidentRequest): Promise<IncidentReceipt> {
+export async function create(
+  actor: Actor,
+  input: CreateIncidentRequest,
+  image: UploadedImage | undefined,
+): Promise<IncidentReceipt> {
+  if (!image && !input.noImageReason) {
+    throw new ImageOrReasonRequiredError();
+  }
+
   const now = new Date();
   const isHighBand = SEVERITY_RANK[input.severity] >= HIGH_BAND_RANK;
+  const id = newId();
+
+  // Uploaded ahead of the transaction, deliberately — external I/O has no place inside
+  // a DB transaction (it would hold the connection open for the network round trip).
+  // A failed upload means no incident is created at all; a failed transaction after a
+  // successful upload leaves an orphaned Storage object, an acceptable POC trade-off
+  // over the alternative of risking a transaction held open across a network call.
+  let imagePath: string | null = null;
+  if (image) {
+    try {
+      imagePath = await uploadIncidentImage({
+        incidentId: id,
+        buffer: image.buffer,
+        mimetype: image.mimetype,
+        originalName: image.originalname,
+      });
+    } catch (err) {
+      if (err instanceof StorageUploadError) throw new ImageUploadFailedError();
+      throw err;
+    }
+  }
 
   const incident = await withTransaction(async (tx) => {
     const sequence = await nextReferenceSequence(tx);
@@ -65,12 +102,14 @@ export async function create(actor: Actor, input: CreateIncidentRequest): Promis
 
     const created = await createIncident(
       {
-        id: newId(),
+        id,
         reference,
         type: input.type,
         severity: input.severity,
         title: input.title,
         description: input.description,
+        imagePath,
+        noImageReason: imagePath ? null : (input.noImageReason ?? null),
         reporterId: actor.id,
         highSeveritySince: isHighBand ? now : null,
         escalationCycle: isHighBand ? 1 : 0,
