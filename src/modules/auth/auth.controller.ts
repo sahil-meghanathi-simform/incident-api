@@ -10,16 +10,22 @@ const REFRESH_COOKIE_NAME = 'refreshToken';
 // don't need it (those authenticate via the Bearer access token instead).
 const REFRESH_COOKIE_PATH = '/api/v1/auth';
 
-// incident-web calls this endpoint cross-PORT (localhost:5173 -> localhost:4000), but
-// SameSite is a same-SITE concern, not same-origin — the "site" boundary is registrable
-// domain + scheme, which ignores port, so both are "localhost" and this is same-site.
-// Lax is therefore sufficient; `secure` only needs to be true once this is ever served
-// over a real TLS origin in production.
+// In local dev, incident-web calls this endpoint cross-PORT (localhost:5173 ->
+// localhost:4000): SameSite is a same-SITE concern, not same-origin — the "site"
+// boundary is registrable domain + scheme, which ignores port, so both are
+// "localhost" and this is same-site. Lax is sufficient there. But the deployed
+// frontend and backend sit on different registrable domains (e.g. a Vercel
+// project and a Render service) — genuinely cross-site — and a Lax cookie is
+// never attached to a cross-site fetch/XHR (only top-level navigations), so the
+// browser would silently drop it from every refresh call and the session would
+// never survive a page reload. SameSite=None (requires Secure, already true in
+// production) is what a real cross-origin deployment needs.
 function setRefreshCookie(res: Response, token: string): void {
+  const isProd = env.NODE_ENV === 'production';
   res.cookie(REFRESH_COOKIE_NAME, token, {
     httpOnly: true,
-    secure: env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    secure: isProd,
+    sameSite: isProd ? 'none' : 'lax',
     path: REFRESH_COOKIE_PATH,
     maxAge: REFRESH_TOKEN_TTL_MS,
   });
