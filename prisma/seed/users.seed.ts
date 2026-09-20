@@ -11,11 +11,16 @@ interface SeedUser {
 }
 
 // One account per role for demo/QA handoff — email is `<role>@yopmail.com`, same
-// password for all.
+// password for all. Triage manager and investigator get clearance 4 (not the
+// account-creation default of 1): visibilityScope() gates incident visibility by
+// clearance (clearance.policy.ts), so a clearance-1 demo account could only ever
+// see LOW-severity incidents — unable to triage, investigate, or receive
+// escalation notifications for anything HIGH/CRITICAL, which defeats the point
+// of a QA handoff account for those roles.
 export const SEED_USERS: SeedUser[] = [
   { email: 'reporter@yopmail.com', displayName: 'Reporter', role: 'REPORTER', clearanceLevel: 1 },
-  { email: 'triage_manager@yopmail.com', displayName: 'Triage Manager', role: 'TRIAGE_MANAGER', clearanceLevel: 1 },
-  { email: 'investigator@yopmail.com', displayName: 'Investigator', role: 'INVESTIGATOR', clearanceLevel: 1 },
+  { email: 'triage_manager@yopmail.com', displayName: 'Triage Manager', role: 'TRIAGE_MANAGER', clearanceLevel: 4 },
+  { email: 'investigator@yopmail.com', displayName: 'Investigator', role: 'INVESTIGATOR', clearanceLevel: 4 },
   { email: 'admin@yopmail.com', displayName: 'Admin', role: 'ADMIN', clearanceLevel: 4 },
 ];
 
@@ -26,7 +31,7 @@ export async function seedUsers(prisma: PrismaClient): Promise<Map<string, strin
   for (const u of SEED_USERS) {
     const row = await prisma.user.upsert({
       where: { email: u.email },
-      update: {},
+      update: { displayName: u.displayName, role: u.role, clearanceLevel: u.clearanceLevel },
       create: {
         email: u.email,
         passwordHash,
