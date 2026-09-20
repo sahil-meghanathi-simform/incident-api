@@ -65,7 +65,16 @@ function buildIncident(
   }
 
   const isClosed = stage === 'CLOSED';
-  const closedAt = isClosed ? new Date(createdAt.getTime() + intBetween(rng, 1, Math.max(1, daysAgo)) * 60 * 60 * 1000) : null;
+  // PENDING_CLOSURE only exists via closure.service.ts::propose, which always sets
+  // rootCause/correctiveAction/closureProposedById/closureProposedAt in the same
+  // write — a PENDING_CLOSURE row without them is a state the real app can never
+  // produce, and leaves the manager's closure-review screen with nothing to approve
+  // or reject.
+  const hasProposedClosure = stage === 'PENDING_CLOSURE' || isClosed;
+  const closureProposedAt = hasProposedClosure
+    ? new Date(createdAt.getTime() + intBetween(rng, 1, Math.max(1, daysAgo)) * 60 * 60 * 1000)
+    : null;
+  const closedAt = isClosed && closureProposedAt ? new Date(closureProposedAt.getTime() + intBetween(rng, 1, 72) * 60 * 60 * 1000) : null;
 
   // ~60% of high-band, non-closed incidents are acknowledged — leaves a realistic mix
   // of escalation candidates for the live scheduler to find after boot.
@@ -91,10 +100,10 @@ function buildIncident(
     escalationCycle: isHighBand ? 1 : 0,
     currentEscalationLevel: 0,
     lastEscalatedAt: null,
-    rootCause: isClosed ? 'Root cause: ' + LOREM : null,
-    correctiveAction: isClosed ? 'Corrective action: implemented additional controls and retraining.' : null,
-    closureProposedById: isClosed ? assignedInvestigatorId : null,
-    closureProposedAt: isClosed ? closedAt : null,
+    rootCause: hasProposedClosure ? 'Root cause: ' + LOREM : null,
+    correctiveAction: hasProposedClosure ? 'Corrective action: implemented additional controls and retraining.' : null,
+    closureProposedById: hasProposedClosure ? (assignedInvestigatorId ?? pick(rng, managers).id) : null,
+    closureProposedAt,
     closedById: isClosed ? pick(rng, managers).id : null,
     closedAt,
     createdAt,
