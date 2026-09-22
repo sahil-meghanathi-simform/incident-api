@@ -220,8 +220,10 @@ async function main() {
       actualEvents === expectedEvents &&
       actualNotifications === expectedEvents * RECIPIENTS_PER_ROLE_SEVERITY * 2 &&
       excludedTouched === 0 &&
-      results[1].escalated === 0 &&
-      results[2].escalated + results[3].escalated === 0;
+      // A missing run is itself a failure, so an absent entry must not read as 0
+      // escalations and quietly pass — `?? -1` makes the comparison fail instead.
+      (results[1]?.escalated ?? -1) === 0 &&
+      (results[2]?.escalated ?? -1) + (results[3]?.escalated ?? -1) === 0;
 
     console.log(`\n${pass ? 'PASS' : 'FAIL'} — idempotent, correct event/notification counts, excluded rows never touched.`);
     if (!pass) process.exitCode = 1;

@@ -8,6 +8,20 @@ import { createUser } from '../setup/factories/userFactory';
 const prisma = new PrismaClient();
 const app = createApp();
 
+/**
+ * The refresh cookie off a response, narrowed to a string. `headers['set-cookie']` is
+ * `string[] | undefined` under noUncheckedIndexedAccess, and these tests replay the
+ * cookie into a later request rather than merely asserting on it — so a missing header
+ * has to fail here, loudly, instead of travelling on as `undefined`.
+ */
+function refreshCookie(res: request.Response): string {
+  const cookie = res.headers['set-cookie']?.[0];
+  if (typeof cookie !== 'string') {
+    throw new Error('expected a Set-Cookie header on the auth response, got none');
+  }
+  return cookie;
+}
+
 describe('POST /api/v1/auth/refresh — rotation and reuse detection', () => {
   beforeEach(async () => {
     await truncateAll(prisma);
@@ -18,7 +32,7 @@ describe('POST /api/v1/auth/refresh — rotation and reuse detection', () => {
     const agent = request.agent(app);
 
     const login = await agent.post('/api/v1/auth/login').send({ email: 'user@test.local', password: 'Password123!' });
-    const oldCookie = login.headers['set-cookie'][0];
+    const oldCookie = refreshCookie(login);
 
     const firstRefresh = await agent.post('/api/v1/auth/refresh');
     expect(firstRefresh.status).toBe(200);
@@ -35,10 +49,10 @@ describe('POST /api/v1/auth/refresh — rotation and reuse detection', () => {
     const agent = request.agent(app);
 
     const login = await agent.post('/api/v1/auth/login').send({ email: 'user@test.local', password: 'Password123!' });
-    const originalCookie = login.headers['set-cookie'][0];
+    const originalCookie = refreshCookie(login);
 
     const rotated = await agent.post('/api/v1/auth/refresh');
-    const rotatedCookie = rotated.headers['set-cookie'][0];
+    const rotatedCookie = refreshCookie(rotated);
     expect(rotatedCookie).toBeTruthy();
 
     // Present the ORIGINAL (already-rotated-away) cookie — reuse.

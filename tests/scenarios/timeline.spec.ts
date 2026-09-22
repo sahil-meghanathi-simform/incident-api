@@ -112,9 +112,15 @@ describe('Module 8 — Audit & Timeline (build-plan.md §13, implementation-plan
     const items: Array<{ type: string; occurredAt: string }> = res.body.items;
     expect(items.length).toBe(11);
     for (let i = 1; i < items.length; i += 1) {
-      expect(new Date(items[i - 1].occurredAt).getTime()).toBeGreaterThanOrEqual(new Date(items[i].occurredAt).getTime());
+      // The loop bounds guarantee both reads land in range; noUncheckedIndexedAccess
+      // cannot see that, and a silent `undefined` here would make the comparison pass
+      // vacuously rather than fail.
+      const newer = items[i - 1];
+      const older = items[i];
+      if (!newer || !older) throw new Error(`timeline item missing at index ${i}`);
+      expect(new Date(newer.occurredAt).getTime()).toBeGreaterThanOrEqual(new Date(older.occurredAt).getTime());
     }
-    expect(items[items.length - 1].type).toBe('INCIDENT_CREATED');
+    expect(items[items.length - 1]?.type).toBe('INCIDENT_CREATED');
     // The newest two rows are the closure-approval transaction's own pair
     // (CLOSURE_APPROVED + STAGE_CHANGED -> CLOSED, same injected `now`) — which of the
     // two sorts first is an id-tie-break artifact, not something the API promises.
