@@ -7,7 +7,7 @@ import type {
   TypeSeverityMatrixResponse,
 } from '../../contracts/analytics.contract';
 import type { Severity, IncidentType } from '@prisma/client';
-import type { OverviewAggregateRow, EscalationPerformanceRawRow, TrendRawRow } from './analytics.repository';
+import type { OverviewAggregateRow, EscalationPerformanceRawRow, TrendRawRow } from './analytics.types';
 
 export function toOverviewResponse(period: AnalyticsPeriod, row: OverviewAggregateRow): AnalyticsOverviewResponse {
   return {

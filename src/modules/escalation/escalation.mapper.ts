@@ -1,6 +1,6 @@
 import type { EscalationFeedItem, EscalationEventDto, EscalationTierDto } from '../../contracts/escalation.contract';
-import type { Tier } from './tiers.repository';
-import type { EscalationFeedIncidentRow, CurrentEventRow } from './escalation.repository';
+import type { EscalationFeedIncidentRow } from '../incidents/incident.types';
+import type { CurrentEventRow, Tier } from './escalation.types';
 
 export function toEscalationTierDto(tier: Tier): EscalationTierDto {
   return { severity: tier.severity, level: tier.level, thresholdMinutes: tier.thresholdMinutes };

@@ -5,7 +5,7 @@ import { hasClosureRequirements } from '../../policy/closure.policy';
 import { getSignedIncidentImageUrl } from '../../db/supabaseStorage';
 import type { Actor } from '../../types/actor.type';
 import type { IncidentActions, IncidentDetail, IncidentListItem } from '../../contracts/incident.contract';
-import type { IncidentDetailRow, IncidentListRow } from './incident.repository';
+import type { IncidentDetailRow, IncidentListRow } from './incident.types';
 
 function canManage(actor: Actor): boolean {
   return actor.role === 'TRIAGE_MANAGER' || actor.role === 'ADMIN';

@@ -11,7 +11,8 @@ import type {
   TrendResponse,
   TypeSeverityMatrixResponse,
 } from '../../contracts/analytics.contract';
-import { countIncidentsInPeriod, groupIncidentsByTypeAndSeverity, type AnalyticsPeriodFilters } from '../incidents/incident.repository';
+import { countIncidentsInPeriod, groupIncidentsByTypeAndSeverity } from '../incidents/incident.repository';
+import type { AnalyticsPeriodFilters } from '../incidents/incident.types';
 import { escalationPerformanceAggregate, overviewAggregate, trendAggregate } from './analytics.repository';
 import { toEscalationPerformanceResponse, toMatrixCsv, toMatrixResponse, toOverviewResponse, toTrendResponse } from './analytics.mapper';
 

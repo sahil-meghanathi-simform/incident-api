@@ -9,9 +9,8 @@ import {
   createAccessDeniedEvent,
   findRecentAccessDenied,
   searchAudit,
-  type AuditSearchFilters,
-  type CreateAuditEventInput,
 } from './audit.repository';
+import type { AuditSearchFilters, CreateAuditEventInput } from './audit.types';
 
 const log = childLogger({ module: 'audit' });
 

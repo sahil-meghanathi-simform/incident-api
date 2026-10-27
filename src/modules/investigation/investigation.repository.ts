@@ -5,12 +5,11 @@ import { createdAtIdCursorWhere } from '../../core/pagination';
 import { visibilityScope } from '../../policy/clearance.policy';
 import type { Actor } from '../../types/actor.type';
 import { USER_REF_SELECT } from '../incidents/incident.repository';
+import type { CreateNoteInput, NoteRow } from './investigation.types';
 
 export const NOTE_INCLUDE = {
   author: { select: USER_REF_SELECT },
 } satisfies Prisma.InvestigationNoteInclude;
-
-export type NoteRow = Prisma.InvestigationNoteGetPayload<{ include: typeof NOTE_INCLUDE }>;
 
 /**
  * Both gates of the two-gate rule (docs/authorization.md, "walkthrough question 2"),
@@ -49,14 +48,6 @@ export async function findNotesPage(
     orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     take: pageSize + 1,
   });
-}
-
-export interface CreateNoteInput {
-  id: string;
-  incidentId: string;
-  authorId: string;
-  body: string;
-  createdAt: Date;
 }
 
 export function createNote(input: CreateNoteInput, tx: TxClient): Promise<NoteRow> {

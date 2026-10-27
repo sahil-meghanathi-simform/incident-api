@@ -1,6 +1,7 @@
 import { prisma } from '../../db/prisma';
 import type { TxClient } from '../../db/transaction';
 import type { AssignableInvestigator } from '../../contracts/user.contract';
+import type { InvestigatorRow } from './users.types';
 
 export async function findAssignableInvestigators(
   minClearance: number,
@@ -11,14 +12,6 @@ export async function findAssignableInvestigators(
     orderBy: [{ clearanceLevel: 'desc' }, { displayName: 'asc' }],
     select: { id: true, displayName: true, clearanceLevel: true },
   });
-}
-
-export interface InvestigatorRow {
-  id: string;
-  displayName: string;
-  role: 'REPORTER' | 'TRIAGE_MANAGER' | 'INVESTIGATOR' | 'ADMIN';
-  clearanceLevel: number;
-  isActive: boolean;
 }
 
 /** Used by triage.service.ts::assignInvestigator to validate an assignment target. */

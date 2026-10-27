@@ -16,6 +16,7 @@ import {
   revokeSession,
 } from './auth.repository';
 import { generateRefreshToken, hashRefreshToken, refreshTokenExpiryDate, signAccessToken } from './token.service';
+import type { RequestMeta } from './auth.types';
 
 const BCRYPT_COST = 12;
 
@@ -23,11 +24,6 @@ const BCRYPT_COST = 12;
 // the same code path (and roughly the same time) as a real user's row, so "email not
 // found" and "wrong password" are indistinguishable from response timing, not just message.
 const DUMMY_HASH = bcrypt.hashSync('no-such-user-placeholder', BCRYPT_COST);
-
-export interface RequestMeta {
-  userAgent?: string;
-  ipAddress?: string;
-}
 
 function toUserSummary(user: User): UserSummary {
   return {

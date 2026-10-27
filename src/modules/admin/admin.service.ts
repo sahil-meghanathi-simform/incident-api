@@ -19,9 +19,8 @@ import * as auditService from '../audit/audit.service';
 import {
   findAssignedNonClosedIncidents,
   updateVersioned,
-  type AssignedIncidentRow,
-  type UpdateIncidentStateInput,
 } from '../incidents/incident.repository';
+import type { AssignedIncidentRow, UpdateIncidentStateInput } from '../incidents/incident.types';
 import { activeTiers, replaceTierSet } from '../escalation/tiers.repository';
 import { toAdminUserRow } from './admin.mapper';
 import {

@@ -3,7 +3,8 @@ import { prisma } from '../../db/prisma';
 import { visibleSeverities } from '../../policy/clearance.policy';
 import type { Actor } from '../../types/actor.type';
 import type { Bucket } from '../../contracts/analytics.contract';
-import type { AnalyticsPeriodFilters } from '../incidents/incident.repository';
+import type { AnalyticsPeriodFilters } from '../incidents/incident.types';
+import type { EscalationPerformanceRawRow, OverviewAggregateRow, TrendRawRow } from './analytics.types';
 
 /**
  * `prisma.$queryRaw` against `"Incident"`/`"EscalationEvent"` does not match the
@@ -31,13 +32,6 @@ function typeClauseSql(types: IncidentType[] | undefined): Prisma.Sql {
 function stageClauseSql(stages: Stage[] | undefined): Prisma.Sql {
   if (!stages?.length) return Prisma.empty;
   return Prisma.sql`AND i.stage = ANY(ARRAY[${Prisma.join(stages)}]::"Stage"[])`;
-}
-
-export interface OverviewAggregateRow {
-  total: number;
-  open: number;
-  escalated: number;
-  medianAckSeconds: number | null;
 }
 
 /**
@@ -80,12 +74,6 @@ export async function overviewAggregate(actor: Actor, filters: AnalyticsPeriodFi
   };
 }
 
-export interface TrendRawRow {
-  bucketStart: Date;
-  severity: Severity;
-  count: number;
-}
-
 /**
  * Raw SQL for `date_trunc` (Prisma has no ORM equivalent). Clearance-scoped through
  * `severity = ANY(...)` built by the same `visibleSeverities()` function
@@ -107,14 +95,6 @@ export async function trendAggregate(actor: Actor, filters: AnalyticsPeriodFilte
     `,
   );
   return rows;
-}
-
-export interface EscalationPerformanceRawRow {
-  severity: Severity;
-  escalatedCount: number;
-  acknowledgedCount: number;
-  medianAckSeconds: number | null;
-  p90AckSeconds: number | null;
 }
 
 /**

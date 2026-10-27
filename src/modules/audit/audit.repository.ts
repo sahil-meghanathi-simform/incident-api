@@ -4,17 +4,13 @@ import { newId } from '../../core/ids';
 import { occurredAtIdCursorWhere } from '../../core/pagination';
 import { USER_REF_SELECT } from '../incidents/incident.repository';
 import type { TxClient } from '../../db/transaction';
-
-export interface CreateAuditEventInput {
-  incidentId?: string;
-  actorId?: string;
-  type: AuditEventType;
-  fromValue?: string;
-  toValue?: string;
-  reason?: string;
-  payload?: Prisma.InputJsonValue;
-  occurredAt: Date;
-}
+import type {
+  AccessDeniedInput,
+  AuditEventRow,
+  AuditSearchFilters,
+  AuditSearchRow,
+  CreateAuditEventInput,
+} from './audit.types';
 
 export function createAuditEvent(input: CreateAuditEventInput, tx: TxClient) {
   return tx.auditEvent.create({
@@ -30,14 +26,6 @@ export function createAuditEvent(input: CreateAuditEventInput, tx: TxClient) {
       occurredAt: input.occurredAt,
     },
   });
-}
-
-export interface AccessDeniedInput {
-  incidentId: string;
-  actorId: string;
-  reason: string;
-  clearanceLevel: number;
-  occurredAt: Date;
 }
 
 /**
@@ -74,8 +62,6 @@ export function createAccessDeniedEvent(input: AccessDeniedInput) {
 export const AUDIT_EVENT_INCLUDE = {
   actor: { select: USER_REF_SELECT },
 } satisfies Prisma.AuditEventInclude;
-
-export type AuditEventRow = Prisma.AuditEventGetPayload<{ include: typeof AUDIT_EVENT_INCLUDE }>;
 
 /**
  * The `(incidentId, occurredAt desc, id desc)` index built with the AuditEvent model in
@@ -116,20 +102,10 @@ export function findUserRefsByIds(ids: string[]) {
   return prisma.user.findMany({ where: { id: { in: ids } }, select: USER_REF_SELECT });
 }
 
-export interface AuditSearchFilters {
-  type?: AuditEventType[];
-  actorId?: string;
-  incidentId?: string;
-  from?: Date;
-  to?: Date;
-}
-
-const AUDIT_SEARCH_INCLUDE = {
+export const AUDIT_SEARCH_INCLUDE = {
   actor: { select: USER_REF_SELECT },
   incident: { select: { reference: true } },
 } satisfies Prisma.AuditEventInclude;
-
-export type AuditSearchRow = Prisma.AuditEventGetPayload<{ include: typeof AUDIT_SEARCH_INCLUDE }>;
 
 function buildSearchWhere(filters: AuditSearchFilters): Prisma.AuditEventWhereInput {
   return {

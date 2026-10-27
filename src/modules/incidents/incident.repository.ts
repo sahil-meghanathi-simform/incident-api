@@ -4,21 +4,18 @@ import type { TxClient } from '../../db/transaction';
 import { escalationFeedCursorWhere } from '../../core/pagination';
 import { effectiveSeverities, visibilityScope } from '../../policy/clearance.policy';
 import type { Actor } from '../../types/actor.type';
-
-export interface CreateIncidentInput {
-  id: string;
-  reference: string;
-  type: IncidentType;
-  severity: Severity;
-  title: string;
-  description: string;
-  imagePath: string | null;
-  noImageReason: string | null;
-  reporterId: string;
-  highSeveritySince: Date | null;
-  escalationCycle: number;
-  createdAt: Date;
-}
+import type {
+  AnalyticsPeriodFilters,
+  AssignedIncidentRow,
+  CreateIncidentInput,
+  EscalationFeedIncidentRow,
+  IncidentDetailRow,
+  IncidentListFilters,
+  IncidentListRow,
+  OrderBy,
+  TriageIncidentRow,
+  UpdateIncidentStateInput,
+} from './incident.types';
 
 /**
  * Allocates the next value from `incident_reference_seq` (build-plan.md finding B5)
@@ -53,19 +50,6 @@ export function createIncident(input: CreateIncidentInput, tx: TxClient): Promis
 // ---------------------------------------------------------------------------
 // Module 3 — Read & Visibility
 // ---------------------------------------------------------------------------
-
-export interface IncidentListFilters {
-  severity?: Severity[];
-  stage?: Stage[];
-  type?: IncidentType[];
-  assignedToMe?: boolean;
-  reportedByMe?: boolean;
-  unacknowledged?: boolean;
-  escalatedOnly?: boolean;
-  from?: Date;
-  to?: Date; // exclusive upper bound — callers pass the already-widened value
-  q?: string;
-}
 
 /**
  * The ONLY place a caller-supplied filter is composed with visibilityScope. Every
@@ -107,21 +91,12 @@ export const INCIDENT_LIST_INCLUDE = {
   assignee: { select: USER_REF_SELECT },
 } satisfies Prisma.IncidentInclude;
 
-export type IncidentListRow = Prisma.IncidentGetPayload<{ include: typeof INCIDENT_LIST_INCLUDE }>;
-
 export const INCIDENT_DETAIL_INCLUDE = {
   reporter: { select: USER_REF_SELECT },
   assignee: { select: USER_REF_SELECT },
   acknowledger: { select: USER_REF_SELECT },
   closer: { select: USER_REF_SELECT },
 } satisfies Prisma.IncidentInclude;
-
-export type IncidentDetailRow = Prisma.IncidentGetPayload<{ include: typeof INCIDENT_DETAIL_INCLUDE }>;
-
-export interface OrderBy {
-  field: 'createdAt' | 'severity' | 'updatedAt';
-  direction: 'asc' | 'desc';
-}
 
 /** `$transaction([count, findMany])` so the total and the page are always consistent. */
 export async function countAndFindPage(
@@ -200,13 +175,6 @@ export async function countByStage(actor: Actor): Promise<{ stage: Stage; count:
 // from disagreeing at the boundary the way the reference plan's did (build-plan.md S4).
 // ---------------------------------------------------------------------------
 
-export interface AnalyticsPeriodFilters {
-  from: Date;
-  to: Date; // exclusive
-  type?: IncidentType[];
-  stage?: Stage[];
-}
-
 function analyticsPeriodWhere(actor: Actor, filters: AnalyticsPeriodFilters): Prisma.IncidentWhereInput {
   const and: Prisma.IncidentWhereInput[] = [
     visibilityScope(actor),
@@ -247,8 +215,6 @@ export const TRIAGE_ROW_INCLUDE = {
   assignee: { select: { id: true, displayName: true, clearanceLevel: true } },
 } satisfies Prisma.IncidentInclude;
 
-export type TriageIncidentRow = Prisma.IncidentGetPayload<{ include: typeof TRIAGE_ROW_INCLUDE }>;
-
 /**
  * The same two-query-form authorization decision as findByIdScoped (§2.3), reused by
  * every Module 4 mutation via incident.service.ts::getByIdForActor so a triager cannot
@@ -259,23 +225,6 @@ export function findTriageRowScoped(id: string, actor: Actor): Promise<TriageInc
     where: { id, ...visibilityScope(actor) },
     include: TRIAGE_ROW_INCLUDE,
   });
-}
-
-export interface UpdateIncidentStateInput {
-  stage?: Stage;
-  severity?: Severity;
-  assignedInvestigatorId?: string | null;
-  acknowledgedAt?: Date | null;
-  acknowledgedById?: string | null;
-  highSeveritySince?: Date | null;
-  escalationCycle?: number;
-  currentEscalationLevel?: number;
-  rootCause?: string | null;
-  correctiveAction?: string | null;
-  closureProposedById?: string | null;
-  closureProposedAt?: Date | null;
-  closedById?: string | null;
-  closedAt?: Date | null;
 }
 
 /**
@@ -411,10 +360,6 @@ export const ESCALATION_FEED_INCLUDE = {
   assignee: { select: USER_REF_SELECT },
 } satisfies Prisma.IncidentInclude;
 
-export type EscalationFeedIncidentRow = Prisma.IncidentGetPayload<{ include: typeof ESCALATION_FEED_INCLUDE }> & {
-  highSeveritySince: Date; // non-null: activeEscalationWhere's currentEscalationLevel > 0 implies it
-};
-
 export async function findActiveEscalationsPage(
   actor: Actor,
   cursor: { level: number; since: Date; id: string } | undefined,
@@ -442,14 +387,6 @@ export async function findActiveEscalationsPage(
 // system-level admin query over one specific user's own assignments, not an
 // actor-scoped read of the incident list.
 // ---------------------------------------------------------------------------
-
-export interface AssignedIncidentRow {
-  id: string;
-  reference: string;
-  severity: Severity;
-  stage: Stage;
-  version: number;
-}
 
 /**
  * Every non-CLOSED incident currently assigned to `userId` — the candidate set for

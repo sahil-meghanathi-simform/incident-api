@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { tiersDueFor, type EscalationCandidate } from '../../src/jobs/escalation.job';
-import type { Tier } from '../../src/modules/escalation/tiers.repository';
+import type { Tier } from '../../src/modules/escalation/escalation.types';
 
 const TIERS: Tier[] = [
   { severity: 'HIGH', level: 1, thresholdMinutes: 30 },

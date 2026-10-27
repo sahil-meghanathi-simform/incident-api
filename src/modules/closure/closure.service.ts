@@ -13,7 +13,8 @@ import type { Actor } from '../../types/actor.type';
 import * as auditService from '../audit/audit.service';
 import { getById, getByIdForActor } from '../incidents/incident.service';
 import { toIncidentListItem } from '../incidents/incident.mapper';
-import { findClosuresPendingPage, updateVersioned, type UpdateIncidentStateInput } from '../incidents/incident.repository';
+import { findClosuresPendingPage, updateVersioned } from '../incidents/incident.repository';
+import type { UpdateIncidentStateInput } from '../incidents/incident.types';
 import { buildOffsetPage } from '../../core/pagination';
 
 /**

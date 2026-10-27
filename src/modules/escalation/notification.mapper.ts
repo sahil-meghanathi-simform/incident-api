@@ -1,5 +1,5 @@
 import type { NotificationItem } from '../../contracts/escalation.contract';
-import type { NotificationRow } from './notification.repository';
+import type { NotificationRow } from './escalation.types';
 
 export function toNotificationItem(row: NotificationRow): NotificationItem {
   return {

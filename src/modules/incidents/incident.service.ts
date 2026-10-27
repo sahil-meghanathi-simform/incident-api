@@ -21,12 +21,6 @@ import type { Actor } from '../../types/actor.type';
 import * as auditService from '../audit/audit.service';
 import { toIncidentDetail, toIncidentListItem } from './incident.mapper';
 
-/** The multer memory-storage shape incident.controller.ts hands off from req.file. */
-export interface UploadedImage {
-  buffer: Buffer;
-  mimetype: string;
-  originalname: string;
-}
 import {
   countAndFindPage,
   countByStage,
@@ -36,9 +30,8 @@ import {
   findMinePage,
   findTriageRowScoped,
   nextReferenceSequence,
-  type IncidentListFilters,
-  type TriageIncidentRow,
 } from './incident.repository';
+import type { IncidentListFilters, TriageIncidentRow, UploadedImage } from './incident.types';
 
 const TYPE_LABEL: Record<(typeof IncidentTypeValues)[number], string> = {
   SAFETY: 'Safety',

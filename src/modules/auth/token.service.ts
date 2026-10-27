@@ -2,11 +2,7 @@ import jwt from 'jsonwebtoken';
 import { randomBytes, createHash } from 'node:crypto';
 import { env } from '../../config/env';
 import { ACCESS_TOKEN_TTL_SECONDS, REFRESH_TOKEN_TTL_MS } from '../../config/constants';
-
-export interface AccessTokenPayload {
-  sub: string; // user id
-  sid: string; // session id — pairs the access token with a refresh-token family
-}
+import type { AccessTokenPayload } from './auth.types';
 
 export function signAccessToken(payload: AccessTokenPayload): string {
   return jwt.sign(payload, env.JWT_ACCESS_SECRET, { expiresIn: ACCESS_TOKEN_TTL_SECONDS });

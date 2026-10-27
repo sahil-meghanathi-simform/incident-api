@@ -21,17 +21,11 @@ import type { Actor } from '../../types/actor.type';
 import * as auditService from '../audit/audit.service';
 import { getById, getByIdForActor } from '../incidents/incident.service';
 import { toIncidentListItem } from '../incidents/incident.mapper';
-import { findTriageQueuePage, updateVersioned, type UpdateIncidentStateInput } from '../incidents/incident.repository';
+import { findTriageQueuePage, updateVersioned } from '../incidents/incident.repository';
+import type { UpdateIncidentStateInput } from '../incidents/incident.types';
 import { findInvestigatorById } from '../users/users.repository';
 import { buildOffsetPage } from '../../core/pagination';
-
-interface SeverityClockFields {
-  highSeveritySince: Date | null;
-  escalationCycle: number;
-  currentEscalationLevel: number;
-  acknowledgedAt: Date | null;
-  acknowledgedById: string | null;
-}
+import type { SeverityClockFields } from './triage.types';
 
 /**
  * build-plan.md finding S1: the reference plan's §9.1 enumerates three cases — entering

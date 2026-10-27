@@ -1,22 +1,8 @@
 import { prisma } from '../../db/prisma';
 import { findActiveEscalationsPage } from '../incidents/incident.repository';
+import type { CurrentEventKey, CurrentEventRow } from './escalation.types';
 
 export { findActiveEscalationsPage };
-export type { EscalationFeedIncidentRow } from '../incidents/incident.repository';
-
-export interface CurrentEventKey {
-  incidentId: string;
-  cycle: number;
-  level: number;
-}
-
-export interface CurrentEventRow {
-  incidentId: string;
-  cycle: number;
-  level: number;
-  dueAt: Date;
-  triggeredAt: Date;
-}
 
 /**
  * Exact (incidentId, cycle, level) tuple lookup against the unique index — the second

@@ -1,8 +1,6 @@
 import type { IncidentType, Severity, Stage } from '../../contracts/enums';
 import type { AuditRow, TimelineEvent } from '../../contracts/audit.contract';
-import type { AuditEventRow, AuditSearchRow } from './audit.repository';
-
-type UserRef = { id: string; displayName: string };
+import type { AuditEventRow, AuditSearchRow, UserRef } from './audit.types';
 
 /**
  * One event type → one payload shape, decoded from the AuditEvent row's generic

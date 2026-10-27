@@ -1,5 +1,5 @@
 import type { InvestigationNote } from '../../contracts/investigation.contract';
-import type { NoteRow } from './investigation.repository';
+import type { NoteRow } from './investigation.types';
 
 export function toInvestigationNote(row: NoteRow): InvestigationNote {
   return {

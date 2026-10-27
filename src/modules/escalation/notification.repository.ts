@@ -3,6 +3,7 @@ import { prisma } from '../../db/prisma';
 import { createdAtIdCursorWhere } from '../../core/pagination';
 import { visibilityScope } from '../../policy/clearance.policy';
 import type { Actor } from '../../types/actor.type';
+import type { NotificationRow } from './escalation.types';
 
 /**
  * The S2 fix's second half: a notification is scoped by recipient AND by whether the
@@ -25,8 +26,6 @@ export const NOTIFICATION_INCLUDE = {
     },
   },
 } satisfies Prisma.NotificationLogInclude;
-
-export type NotificationRow = Prisma.NotificationLogGetPayload<{ include: typeof NOTIFICATION_INCLUDE }>;
 
 export async function findNotificationsPage(
   actor: Actor,

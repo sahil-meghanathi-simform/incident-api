@@ -1,12 +1,6 @@
-import type { Severity } from '../../contracts/enums';
 import { prisma } from '../../db/prisma';
 import type { TxClient } from '../../db/transaction';
-
-export interface Tier {
-  severity: Severity;
-  level: number;
-  thresholdMinutes: number;
-}
+import type { Tier } from './escalation.types';
 
 export async function activeTiers(client: TxClient | typeof prisma = prisma): Promise<Tier[]> {
   const rows = await client.escalationTier.findMany({

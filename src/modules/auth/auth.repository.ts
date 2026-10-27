@@ -1,23 +1,7 @@
 import type { User } from '@prisma/client';
 import { prisma } from '../../db/prisma';
 import type { TxClient } from '../../db/transaction';
-
-export interface CreateUserInput {
-  id: string;
-  email: string;
-  passwordHash: string;
-  displayName: string;
-}
-
-export interface CreateRefreshTokenInput {
-  id: string;
-  userId: string;
-  sessionId: string;
-  tokenHash: string;
-  expiresAt: Date;
-  userAgent?: string;
-  ipAddress?: string;
-}
+import type { CreateRefreshTokenInput, CreateUserInput } from './auth.types';
 
 export function findUserByEmail(email: string, client: TxClient | typeof prisma = prisma): Promise<User | null> {
   return client.user.findUnique({ where: { email } });
