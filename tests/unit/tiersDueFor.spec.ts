@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { tiersDueFor, type EscalationCandidate } from '../../src/jobs/escalation.job';
+import { tiersDueFor } from '../../src/jobs/escalation.job';
+import type { EscalationCandidate } from '../../src/jobs/jobs.types';
 import type { Tier } from '../../src/modules/escalation/escalation.types';
 
 const TIERS: Tier[] = [

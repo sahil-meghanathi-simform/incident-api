@@ -1,5 +1,4 @@
 import type { Clock } from '../core/time';
-import type { Logger } from '../core/logger';
 import { newId } from '../core/ids';
 import { prisma } from '../db/prisma';
 import type { TxClient } from '../db/transaction';
@@ -10,21 +9,9 @@ import { activeTiers } from '../modules/escalation/tiers.repository';
 import type { Tier } from '../modules/escalation/escalation.types';
 import { SEVERITY_RANK } from '../config/constants';
 import { jobRunRepository } from './jobRun.repository';
+import type { BatchRow, Deps, DueTier, EscalationCandidate, EscalationRunResult } from './jobs.types';
 import type { Severity } from '../contracts/enums';
 import type { Prisma } from '@prisma/client';
-
-export interface EscalationCandidate {
-  id: string;
-  severity: Severity;
-  highSeveritySince: Date;
-  escalationCycle: number;
-  currentEscalationLevel: number;
-}
-
-export interface DueTier {
-  level: number;
-  thresholdMinutes: number;
-}
 
 /**
  * Pure, no I/O, exhaustively unit-tested (tests/unit/tiersDueFor.spec.ts). Returns every
@@ -41,26 +28,6 @@ export function tiersDueFor(incident: EscalationCandidate, tiers: Tier[], now: D
     .filter((t) => elapsedMinutes >= t.thresholdMinutes)
     .sort((a, b) => a.level - b.level)
     .map((t) => ({ level: t.level, thresholdMinutes: t.thresholdMinutes }));
-}
-
-interface BatchRow {
-  id: string;
-  severity: Severity;
-  highSeveritySince: Date | null;
-  escalationCycle: number;
-  currentEscalationLevel: number;
-}
-
-export interface EscalationRunResult {
-  outcome: 'COMPLETED' | 'SKIPPED_LOCKED' | 'FAILED';
-  scanned: number;
-  escalated: number;
-  notified: number;
-}
-
-interface Deps {
-  clock: Clock;
-  logger: Logger;
 }
 
 async function recipientsFor(severity: Severity): Promise<{ id: string }[]> {
