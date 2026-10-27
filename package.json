@@ -18,7 +18,7 @@
     "test:watch": "vitest",
     "test:load": "tsx scripts/load-test-escalation.ts",
     "test:compose": "bash scripts/smoke-compose.sh",
-    "lint": "eslint . --ext .ts",
+    "lint": "eslint . --ext .ts,.mts",
     "lint:layers": "bash scripts/check-layers.sh",
     "typecheck": "tsc -p tsconfig.all.json --noEmit"
   },

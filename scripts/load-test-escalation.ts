@@ -52,10 +52,10 @@ async function main() {
   });
 
   // Imported AFTER DATABASE_URL is set — src/db/prisma.ts reads it at import time.
-  const { runEscalationJob, tiersDueFor } = await import('../src/jobs/escalation.job');
-  const { FrozenClock } = await import('../src/core/time');
-  const { rootLogger } = await import('../src/core/logger');
-  const { newId } = await import('../src/core/ids');
+  const { runEscalationJob, tiersDueFor } = await import('../src/jobs/escalation.job.js');
+  const { FrozenClock } = await import('../src/core/time.js');
+  const { rootLogger } = await import('../src/core/logger.js');
+  const { newId } = await import('../src/core/ids.js');
 
   const prisma = new PrismaClient();
 
